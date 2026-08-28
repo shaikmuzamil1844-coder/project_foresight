@@ -12,6 +12,7 @@ class InventoryEngine:
     ) -> dict:
         """
         Calculate Safety Stock, Reorder Point, Risk Level, and Recommended Order Quantity.
+        Returns pure Python float and int types compatible with PostgreSQL/psycopg2.
         """
         if not historical_sales or len(historical_sales) == 0:
             avg_daily_demand = 1.0
@@ -22,17 +23,17 @@ class InventoryEngine:
             std_daily_demand = float(np.std(recent_sales)) if len(recent_sales) > 1 else 0.5
 
         # 1. Lead Time Demand
-        lead_time_demand = avg_daily_demand * lead_time_days
+        lead_time_demand = float(avg_daily_demand * lead_time_days)
 
         # 2. Safety Stock (Service level Z = 1.65 for 95% service level)
-        safety_stock = 1.65 * std_daily_demand * np.sqrt(lead_time_days)
+        safety_stock = float(1.65 * std_daily_demand * float(np.sqrt(lead_time_days)))
         safety_stock = max(float(min_safety_stock), safety_stock)
 
         # 3. Reorder Point (ROP)
-        reorder_point = lead_time_demand + safety_stock
+        reorder_point = float(lead_time_demand + safety_stock)
 
         # 4. Days to Stockout
-        days_to_stockout = current_stock / avg_daily_demand if avg_daily_demand > 0 else 999.0
+        days_to_stockout = float(current_stock / avg_daily_demand if avg_daily_demand > 0 else 999.0)
 
         # 5. Risk Assessment
         if current_stock <= reorder_point or days_to_stockout <= lead_time_days:
@@ -46,18 +47,18 @@ class InventoryEngine:
 
         # 6. Recommended Order Quantity (Target inventory = ROP + 30 days of demand)
         target_inventory = reorder_point + (avg_daily_demand * 30)
-        recommended_quantity = max(0, int(np.ceil(target_inventory - current_stock))) if risk_level in ["HIGH", "MEDIUM"] else 0
-        recommended_purchase_cost = round(recommended_quantity * unit_price, 2)
+        recommended_quantity = int(max(0, int(np.ceil(target_inventory - current_stock)))) if risk_level in ["HIGH", "MEDIUM"] else 0
+        recommended_purchase_cost = float(round(recommended_quantity * unit_price, 2))
 
         return {
-            "current_stock": current_stock,
-            "avg_daily_demand": round(avg_daily_demand, 2),
-            "lead_time_days": lead_time_days,
-            "lead_time_demand": round(lead_time_demand, 2),
-            "safety_stock": round(safety_stock, 2),
-            "reorder_point": round(reorder_point, 2),
-            "recommended_quantity": recommended_quantity,
-            "recommended_purchase_cost": recommended_purchase_cost,
-            "risk_level": risk_level,
-            "days_to_stockout": round(days_to_stockout, 1)
+            "current_stock": int(current_stock),
+            "avg_daily_demand": float(round(avg_daily_demand, 2)),
+            "lead_time_days": int(lead_time_days),
+            "lead_time_demand": float(round(lead_time_demand, 2)),
+            "safety_stock": float(round(safety_stock, 2)),
+            "reorder_point": float(round(reorder_point, 2)),
+            "recommended_quantity": int(recommended_quantity),
+            "recommended_purchase_cost": float(recommended_purchase_cost),
+            "risk_level": str(risk_level),
+            "days_to_stockout": float(round(days_to_stockout, 1))
         }

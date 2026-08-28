@@ -103,19 +103,20 @@ class DemandForecaster:
 
             feat_vector = pd.DataFrame([next_row])[self.feature_cols]
             pred_demand = float(self.model.predict(feat_vector)[0])
-            pred_demand = max(0.0, round(pred_demand, 2))
+            pred_demand = float(max(0.0, round(pred_demand, 2)))
 
             # Confidence bounds (+/- 1.96 * RMSE)
-            margin = 1.96 * max(1.0, rmse)
-            lower_bound = max(0.0, round(pred_demand - margin, 2))
-            upper_bound = round(pred_demand + margin, 2)
+            margin = float(1.96 * max(1.0, rmse))
+            lower_bound = float(max(0.0, round(pred_demand - margin, 2)))
+            upper_bound = float(round(pred_demand + margin, 2))
 
             forecast_rows.append({
                 'date': next_date.strftime('%Y-%m-%d'),
-                'predicted_demand': pred_demand,
-                'lower_bound': lower_bound,
-                'upper_bound': upper_bound
+                'predicted_demand': float(pred_demand),
+                'lower_bound': float(lower_bound),
+                'upper_bound': float(upper_bound)
             })
+
 
             # Append prediction to history for subsequent lag generation
             next_row['units_sold'] = pred_demand

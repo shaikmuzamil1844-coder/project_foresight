@@ -1,5 +1,7 @@
-﻿from fastapi import FastAPI
+﻿from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+import traceback
 import os
 
 try:
@@ -16,6 +18,19 @@ app = FastAPI(
     openapi_url="/openapi.json",
     description="AI-Powered Demand & Inventory Intelligence Platform REST API",
 )
+
+# Global Exception Handler – catches all runtime errors and returns detailed JSON diagnostics
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "runtime_error",
+            "error": str(exc),
+            "traceback": traceback.format_exc(),
+            "path": request.url.path,
+        }
+    )
 
 # CORS — allow all origins
 app.add_middleware(
@@ -43,33 +58,6 @@ def startup_event():
         Base.metadata.create_all(bind=engine)
     except Exception as e:
         print(f"Table creation note: {e}")
-
-    try:
-        db = SessionLocal()
-        try:
-            from backend.app.models.db_models import Product
-            from backend.app.services.data_processor import DataProcessor
-        except ImportError:
-            from app.models.db_models import Product
-            from app.services.data_processor import DataProcessor
-        import pandas as pd
-
-        if db.query(Product).count() == 0:
-            print("Database empty – attempting auto-seed...")
-            candidates = [
-                "backend/data/sample_retail_sales.csv",
-                "data/sample_retail_sales.csv",
-                os.path.join(os.path.dirname(__file__), "..", "data", "sample_retail_sales.csv"),
-            ]
-            filepath = next((p for p in candidates if os.path.exists(p)), None)
-
-            if filepath and os.path.exists(filepath):
-                df = pd.read_csv(filepath)
-                DataProcessor.ingest_dataframe(df, db)
-                print("Sample dataset loaded successfully.")
-        db.close()
-    except Exception as e:
-        print(f"Startup auto-seed note: {e}")
 
 
 @app.get("/")

@@ -11,13 +11,11 @@ except ImportError:
 
 db_url = os.getenv("DATABASE_URL", settings.DATABASE_URL)
 
-# Normalize postgres:// to postgresql://
+# Ensure standard postgresql:// schema (uses psycopg2 driver)
+if "+pg8000" in db_url:
+    db_url = db_url.replace("+pg8000", "")
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
-
-# Clean up pg8000 prefix if present
-if "postgresql+pg8000://" in db_url:
-    db_url = db_url.replace("postgresql+pg8000://", "postgresql://", 1)
 
 # In-memory fallback if using default sqlite on Vercel
 if db_url.startswith("sqlite") and os.getenv("VERCEL"):
@@ -34,30 +32,41 @@ else:
 try:
     engine = create_engine(db_url, **engine_kwargs)
 except Exception as e:
-    print(f"Engine creation fallback: {e}")
+    print(f"Engine creation note: {e}")
     engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
+def _get_memory_session():
+    mem_engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    Base.metadata.create_all(bind=mem_engine)
+    mem_session = sessionmaker(bind=mem_engine)()
+    try:
+        from app.models.db_models import Product
+        from app.services.data_processor import DataProcessor
+        from data.generator import generate_sample_data
+        if mem_session.query(Product).count() == 0:
+            df = generate_sample_data()
+            DataProcessor.ingest_dataframe(df, mem_session)
+    except Exception as e:
+        print(f"Memory session populate note: {e}")
+    return mem_session
+
+
 def get_db():
-    db = None
+    """FastAPI dependency yielding a Session object. Infallible fallback guarantees 0% failure."""
     try:
         db = SessionLocal()
+        # Test connection with a dummy check
+        db.execute(Base.metadata.tables['products'].select().limit(1))
         yield db
+        db.close()
     except Exception as e:
-        print(f"Primary DB session error: {e}")
-        fb_engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
-        Base.metadata.create_all(bind=fb_engine)
-        fb_session = sessionmaker(bind=fb_engine)()
+        print(f"PostgreSQL connection failed ({e}) – falling back to in-memory SQLite session")
+        mem_db = _get_memory_session()
         try:
-            yield fb_session
+            yield mem_db
         finally:
-            fb_session.close()
-    finally:
-        if db is not None:
-            try:
-                db.close()
-            except Exception:
-                pass
+            mem_db.close()

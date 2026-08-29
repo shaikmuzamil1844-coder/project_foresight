@@ -1,4 +1,4 @@
-﻿from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -10,6 +10,7 @@ except ImportError:
 
 class Product(Base):
     __tablename__ = "products"
+    __table_args__ = {'extend_existing': True}
 
     id               = Column(Integer, primary_key=True, index=True)
     sku_id           = Column(String, unique=True, index=True, nullable=False)
@@ -28,6 +29,7 @@ class Product(Base):
 
 class SalesRecord(Base):
     __tablename__ = "sales"
+    __table_args__ = {'extend_existing': True}
 
     id         = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
@@ -40,6 +42,7 @@ class SalesRecord(Base):
 
 class InventoryRecord(Base):
     __tablename__ = "inventory"
+    __table_args__ = {'extend_existing': True}
 
     id             = Column(Integer, primary_key=True, index=True)
     product_id     = Column(Integer, ForeignKey("products.id"), nullable=False)
@@ -51,6 +54,7 @@ class InventoryRecord(Base):
 
 class ForecastRecord(Base):
     __tablename__ = "forecasts"
+    __table_args__ = {'extend_existing': True}
 
     id               = Column(Integer, primary_key=True, index=True)
     product_id       = Column(Integer, ForeignKey("products.id"), nullable=False)
@@ -69,6 +73,7 @@ class ForecastRecord(Base):
 
 class RecommendationRecord(Base):
     __tablename__ = "recommendations"
+    __table_args__ = {'extend_existing': True}
 
     id                  = Column(Integer, primary_key=True, index=True)
     product_id          = Column(Integer, ForeignKey("products.id"), nullable=False)
@@ -83,3 +88,4 @@ class RecommendationRecord(Base):
     created_at          = Column(DateTime, default=datetime.utcnow)
 
     product = relationship("Product", back_populates="recommendations")
+

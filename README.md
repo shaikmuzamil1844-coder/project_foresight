@@ -1,96 +1,229 @@
-# PROJECT FORESIGHT: AI-Powered Demand & Inventory Intelligence Platform
+# 🔮 PROJECT FORESIGHT: AI-Powered Demand & Inventory Intelligence Platform
 
-**Project FORESIGHT** is a full-stack, enterprise-grade demand forecasting and inventory optimization platform. Built with **Next.js 14, Tailwind CSS, FastAPI, SQLAlchemy, and XGBoost/LightGBM**, FORESIGHT converts raw transactional sales history into precise SKU-level forecasts, evaluates stockout and overstock risks, calculates exact Reorder Points ($ROP$) and Safety Stock ($SS$), and generates automated purchase order recommendations alongside an interactive AI Assistant.
+[![Frontend Status](https://img.shields.io/badge/Frontend-Vercel%20Live-black?style=flat-square&logo=vercel)](https://project-foresight-frontend.vercel.app)
+[![Backend Status](https://img.shields.io/badge/Backend-Render%20Live-46E3B7?style=flat-square&logo=render)](https://project-foresight-hkov.onrender.com/health)
+[![API Docs](https://img.shields.io/badge/API%20Docs-Swagger%20UI-blue?style=flat-square&logo=fastapi)](https://project-foresight-hkov.onrender.com/docs)
+[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python)](https://www.python.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16%20(App%20Router)-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
+[![AI Engine](https://img.shields.io/badge/AI%20Copilot-Google%20Gemini-orange?style=flat-square&logo=google)](https://ai.google.dev/)
+
+**Project FORESIGHT** is a full-stack, enterprise-grade demand forecasting and inventory optimization platform. It converts raw transactional retail sales history into actionable SKU-level demand predictions, quantifies stockout and overstock risks, computes statistical Reorder Points ($ROP$) and Safety Stock ($SS$), and delivers automated purchase order recommendations alongside a real-time **Google Gemini AI Supply Chain Copilot**.
 
 ---
 
-## 🌟 Key Features
+## 🌐 Live Deployments
 
-1. **Executive Intelligence Dashboard**: Real-time snapshot of active SKUs, total inventory, 30-day revenue, stockout risks, and recommended procurement budget.
-2. **SKU Demand Forecasting Engine**: Multi-horizon ($7, 14, 30$ days) time-series ML forecasting using XGBoost with lag features, rolling statistics, and 95% confidence bounds ($\pm 1.96 \times \text{RMSE}$).
-3. **Inventory Risk & Intelligence Matrix**: Automated calculation of Lead Time Demand ($LTD$), Safety Stock ($SS$), Reorder Point ($ROP = LTD + SS$), and days-to-stockout countdown.
-4. **Purchase Order Recommendations**: Calculates exact recommended reorder quantities ($\text{Units} = ROP + \text{Demand}_{30d} - \text{Stock}$) and financial cost estimates with 1-click supplier transmission.
-5. **Dataset Upload & Seeder**: Drag-and-drop CSV dataset ingestion with schema validation and 1-click demo dataset seeder.
-6. **Ask Foresight AI Executive Assistant**: Embedded natural language query interface providing structured supply chain insights.
+| Component | Platform | URL |
+| :--- | :--- | :--- |
+| **Frontend Application** | Vercel | [**https://project-foresight-frontend.vercel.app**](https://project-foresight-frontend.vercel.app) |
+| **Backend REST API** | Render | [**https://project-foresight-hkov.onrender.com**](https://project-foresight-hkov.onrender.com) |
+| **Interactive API Docs** | Render | [**https://project-foresight-hkov.onrender.com/docs**](https://project-foresight-hkov.onrender.com/docs) |
+| **Health Check Endpoint** | Render | [**https://project-foresight-hkov.onrender.com/health**](https://project-foresight-hkov.onrender.com/health) |
+
+---
+
+## 🏗️ System Architecture
+
+```mermaid
+flowchart TD
+    subgraph Client ["Client Tier (Next.js 16)"]
+        UI["Web Dashboard UI\n(App Router / Tailwind CSS)"]
+        Charts["Interactive Visualizations\n(Recharts)"]
+        Chat["Foresight AI Copilot\n(Natural Language Chat)"]
+    end
+
+    subgraph BackendTier ["Backend Tier (FastAPI on Render)"]
+        API["FastAPI REST Endpoints\n(/api/products, /api/forecast, /api/inventory)"]
+        MLEngine["Demand Forecasting Engine\n(Gradient Boosting / XGBoost)"]
+        InvEngine["Inventory Risk & Optimization Engine\n(Safety Stock & ROP Calculator)"]
+        AIEngine["AI Copilot Service\n(Google Gemini Integration)"]
+    end
+
+    subgraph DataTier ["Data & Cloud Tier"]
+        DB[(Supabase PostgreSQL / SQLite)]
+        GeminiAPI["Google Gemini LLM API"]
+    end
+
+    UI -->|REST / JSON| API
+    Charts -->|REST / JSON| API
+    Chat -->|REST / JSON| API
+    
+    API --> MLEngine
+    API --> InvEngine
+    API --> AIEngine
+    
+    MLEngine --> DB
+    InvEngine --> DB
+    AIEngine --> GeminiAPI
+    AIEngine --> DB
+```
+
+---
+
+## 🌟 Core Modules & Capabilities
+
+### 1. 📊 Executive Intelligence Dashboard
+- High-level KPIs: Active SKUs, Total Physical Inventory, 30-Day Sales Volume, 30-Day Revenue, and Recommended Purchase Value.
+- Dynamic 30-day interactive sales trend charts and revenue distribution across retail categories.
+- Real-time risk distribution: Critical Risk, Warning, Healthy, and Overstock item counts.
+
+### 2. 📈 Multi-Horizon SKU Demand Forecasting
+- Predictive time-series forecasting across 7, 14, and 30-day horizons.
+- Gradient Boosting with engineered temporal features: rolling means (7d, 14d, 30d), lag variables, day-of-week seasonality, and trend indicators.
+- Confidence intervals ($\pm 1.96 \times \text{RMSE}$) and accuracy metrics (MAE, RMSE, MAPE).
+
+### 3. 🎯 Inventory Risk Matrix & Formula Engine
+- **Lead Time Demand ($LTD$)**:
+  $$\text{LTD} = \bar{D} \times L$$
+- **Statistical Safety Stock ($SS$)**:
+  $$SS = Z \times \sigma_L = Z \times \sqrt{L \cdot \sigma_D^2}$$
+  *(where $Z = 1.65$ for 95% service level)*
+- **Reorder Point ($ROP$)**:
+  $$ROP = \text{LTD} + SS$$
+- **Dynamic Days to Stockout**:
+  $$\text{Days to Stockout} = \frac{\text{Current Stock}}{\bar{D}}$$
+
+### 4. 🛒 Automated Purchase Order Recommendations
+- Computes exact replenishment quantities:
+  $$\text{Quantity} = \max(0, ROP + \text{Demand}_{30d} - \text{Current Stock})$$
+- Generates itemized POs with estimated procurement budget and supplier details.
+
+### 5. 🤖 Ask FORESIGHT AI (Gemini Copilot)
+- Real-time natural language supply chain advisor powered by **Google Gemini**.
+- Answers ad-hoc inventory questions grounded directly in live catalog and stock records.
+- Actionable advice for mitigating stockouts, clearing overstock, and optimizing purchasing schedules.
+
+### 6. 📁 Data Management & CSV Ingestion
+- Upload custom retail transaction CSV/XLSX files.
+- Automated validation, schema alignment, and re-calculation of risks upon ingestion.
+- 1-click sample retail dataset seeder for quick demos.
 
 ---
 
 ## 🛠️ Technology Stack
 
-- **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS, Recharts, Lucide Icons.
-- **Backend**: Python FastAPI, Pydantic v2, SQLAlchemy ORM, Uvicorn.
-- **Machine Learning**: XGBoost, LightGBM, Scikit-Learn, Pandas, NumPy.
-- **Database**: SQLite (Local Dev) / Supabase PostgreSQL (Cloud Production).
+| Layer | Technology | Details |
+| :--- | :--- | :--- |
+| **Frontend** | Next.js 16, React 19, TypeScript | Server & Client Components, App Router |
+| **Styling** | Tailwind CSS, Lucide Icons | Responsive modern dark/light glassmorphic UI |
+| **Charts** | Recharts | Interactive time-series & category breakdowns |
+| **Backend** | Python 3.10+, FastAPI, Uvicorn | High-throughput asynchronous REST API |
+| **Machine Learning** | Scikit-Learn, Pandas, NumPy | Gradient Boosting, rolling feature extraction |
+| **LLM / AI** | Google Gemini | Real-time supply chain context generation |
+| **Database** | PostgreSQL (Supabase) / SQLite | SQLAlchemy 2.0 ORM with relational mapping |
+| **Deployment** | Render (Backend), Vercel (Frontend) | Continuous Deployment from GitHub |
 
 ---
 
-## 🚀 Quick Start Guide
+## 📡 REST API Reference
 
-### Prerequisites
-- Python 3.10+
-- Node.js 18+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/health` | Server status and health check |
+| `GET` | `/api/products` | Retrieve all monitored product SKUs |
+| `GET` | `/api/products/{sku_id}` | Get product details by SKU ID |
+| `GET` | `/api/dashboard/summary` | Aggregate executive KPIs and risk counts |
+| `GET` | `/api/dashboard/charts/sales-trend` | 30-day historical sales and revenue trends |
+| `GET` | `/api/dashboard/charts/category-demand` | Category-wise unit sales and revenue distribution |
+| `GET` | `/api/inventory/risk-matrix` | Full inventory risk calculation for all SKUs |
+| `GET` | `/api/inventory/recommendations` | Filtered purchase order replenishment suggestions |
+| `GET` | `/api/forecast/{sku_id}?days=30` | 30-day forward demand forecast with confidence bounds |
+| `POST` | `/api/assistant/query` | Ask natural language inventory questions to Gemini AI |
+| `POST` | `/api/upload/csv` | Ingest and parse sales history CSV dataset |
+| `POST` | `/api/upload/seed` | Seed default retail sales and inventory dataset |
 
-### 1. Clone & Setup Backend
+---
+
+## 💻 Local Development Setup
+
+### 1. Prerequisites
+- **Python 3.10+**
+- **Node.js 18+**
+- **Git**
+
+### 2. Backend Setup
 ```bash
-# Navigate to backend
+# Navigate to backend directory
 cd backend
 
-# Create virtual environment
+# Create & activate virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
+source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Start FastAPI backend server (auto-seeds sample retail dataset)
-python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
+# Start FastAPI development server
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
-Backend API interactive documentation is available at `http://127.0.0.1:8000/docs`.
+Interactive Swagger documentation is available at: [http://localhost:8000/docs](http://localhost:8000/docs).
 
-### 2. Setup & Launch Frontend
+### 3. Frontend Setup
 ```bash
-# Navigate to frontend
+# In a new terminal, navigate to frontend directory
 cd frontend
 
-# Install packages
+# Install npm packages
 npm install
 
-# Start Next.js dev server
+# Start Next.js development server
 npm run dev
 ```
-Open `http://localhost:3000` in your web browser.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## 📁 Repository Structure
+## 📂 Project Structure
 
 ```text
 Project FORESIGHT/
 ├── backend/
+│   ├── api/
+│   │   └── index.py            # ASGI entrypoint for serverless runtimes
 │   ├── app/
-│   │   ├── api/             # FastAPI REST endpoints
-│   │   ├── core/            # Database session & configuration
-│   │   ├── models/          # ORM models & Pydantic schemas
-│   │   ├── ml/              # Feature engineering & XGBoost forecaster
-│   │   ├── services/        # Data ingestion & inventory risk engine
-│   │   └── main.py          # Application entry point
-│   ├── data/                # Sample retail sales dataset generator
-│   └── requirements.txt
+│   │   ├── api/                # Modular FastAPI router endpoints
+│   │   │   ├── ai_assistant.py
+│   │   │   ├── dashboard.py
+│   │   │   ├── forecast.py
+│   │   │   ├── inventory.py
+│   │   │   ├── products.py
+│   │   │   └── upload.py
+│   │   ├── core/               # App configuration & database session
+│   │   ├── ml/                 # Feature engineering & demand forecaster
+│   │   ├── models/             # SQLAlchemy ORM models & Pydantic schemas
+│   │   ├── services/           # AI copilot & inventory risk engine
+│   │   └── main.py             # Primary FastAPI application entrypoint
+│   ├── data/                   # Sample retail sales dataset & generator
+│   ├── Procfile                # Web process configuration for Render
+│   └── requirements.txt        # Python backend dependencies
 │
 ├── frontend/
+│   ├── public/                 # Static assets and icons
 │   ├── src/
-│   │   ├── app/             # Next.js App Router pages
-│   │   ├── components/      # Glassmorphic UI & Recharts components
-│   │   └── lib/             # API client & TypeScript interfaces
-│   └── package.json
+│   │   ├── app/                # Next.js App Router pages
+│   │   │   ├── assistant/      # AI Copilot interactive chat interface
+│   │   │   ├── forecast/       # Time-series demand forecasting view
+│   │   │   ├── inventory/      # Risk Matrix and stockout monitoring
+│   │   │   ├── products/       # Product catalog and SKU detail views
+│   │   │   ├── recommendations/# Automated purchase order generation
+│   │   │   └── upload/         # CSV dataset upload & seeder
+│   │   ├── components/         # Reusable UI cards, tables, charts & navigation
+│   │   └── lib/                # API client connector & TypeScript types
+│   ├── package.json
+│   └── tsconfig.json
 │
-├── docs/                    # Project report, video scripts & submission checklist
-└── README.md
+├── docs/                       # Project report, video script & documentation
+├── render.yaml                 # Render infrastructure-as-code blueprint
+└── README.md                   # Project documentation
 ```
 
 ---
 
-## 📄 Documentation & Submission Deliverables
-- [Technical Project Report](docs/project_report.md)
-- [Demo Video Script](docs/demo_video_script.md)
-- [Walkthrough & Screenshots](file:///C:/Users/Lenovo/.gemini/antigravity-ide/brain/85c1f472-1b5b-4401-b8e1-69a35b7ea906/walkthrough.md)
+## 📄 License & Attribution
+
+Built for enterprise retail demand intelligence and supply chain optimization.  
+Developed by **Shaik Muzamil** & the **Project FORESIGHT Team**.

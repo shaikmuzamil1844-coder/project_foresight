@@ -1,29 +1,15 @@
 ﻿from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import pandas as pd
 import os
 
 try:
     from backend.app.core.config import settings
     from backend.app.core.database import engine, Base, SessionLocal
     from backend.app.api import upload, products, dashboard, forecast, inventory, ai_assistant
-    from backend.data.generator import generate_sample_data
-    from backend.app.services.data_processor import DataProcessor
 except ImportError:
     from app.core.config import settings
     from app.core.database import engine, Base, SessionLocal
     from app.api import upload, products, dashboard, forecast, inventory, ai_assistant
-    try:
-        from data.generator import generate_sample_data
-    except ImportError:
-        generate_sample_data = None
-    from app.services.data_processor import DataProcessor
-
-# Create database tables safely
-try:
-    Base.metadata.create_all(bind=engine)
-except Exception as e:
-    print(f"Table creation note: {e}")
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -52,13 +38,21 @@ for prefix in ["", "/api"]:
 
 @app.on_event("startup")
 def startup_event():
-    """Auto-seed database if empty."""
+    """Create database tables and auto-seed on startup."""
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        print(f"Table creation note: {e}")
+
     try:
         db = SessionLocal()
         try:
             from backend.app.models.db_models import Product
+            from backend.app.services.data_processor import DataProcessor
         except ImportError:
             from app.models.db_models import Product
+            from app.services.data_processor import DataProcessor
+        import pandas as pd
 
         if db.query(Product).count() == 0:
             print("Database empty – attempting auto-seed...")

@@ -2,13 +2,16 @@
 import React, { useState, useCallback } from 'react';
 import { Header } from '@/components/layout/header';
 import { api } from '@/lib/api';
-import { UploadCloud, FileText, CheckCircle, AlertCircle } from 'lucide-react';
+import { UploadCloud, FileText, CheckCircle } from 'lucide-react';
 
 export default function UploadPage() {
   const [dragging, setDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [seedDone, setSeedDone] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -19,8 +22,25 @@ export default function UploadPage() {
 
   const handleSeed = async () => {
     setSeeding(true);
+    setError(null);
     try { await api.seedDatabase(); setSeedDone(true); }
-    catch (err) { console.error(err); } finally { setSeeding(false); }
+    catch { setError('Unable to load sample data. Please try again.'); }
+    finally { setSeeding(false); }
+  };
+
+  const handleUpload = async () => {
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    setUploadMessage(null);
+    try {
+      const result = await api.uploadCSV(file);
+      setUploadMessage(result.message ?? 'Dataset uploaded successfully.');
+    } catch {
+      setError('Upload failed. Confirm the file format and that the backend is available.');
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -67,6 +87,15 @@ export default function UploadPage() {
                 <ValidationRow icon="✓" label="Size" value={`${(file.size / 1024).toFixed(1)} KB`} ok />
                 <ValidationRow icon="○" label="Records detected" value="Processing..." />
               </div>
+              <button onClick={handleUpload} disabled={uploading} className="btn-primary" style={{ marginTop: 16, opacity: uploading ? 0.7 : 1 }}>
+                {uploading ? 'Importing...' : 'Import Dataset'}
+              </button>
+            </div>
+          )}
+
+          {(uploadMessage || error) && (
+            <div style={{ marginBottom: 20, color: error ? '#DC2626' : '#059669', fontSize: 13, fontWeight: 600 }}>
+              {error ?? uploadMessage}
             </div>
           )}
 

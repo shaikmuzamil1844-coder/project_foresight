@@ -1,59 +1,45 @@
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Query
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import datetime, timedelta
-import os
-import io
 
 try:
+    from backend.app.api import ai_assistant, dashboard, forecast, inventory, products, upload
     from backend.app.core.config import settings
+    from backend.app.core.database import init_db
 except ImportError:
+    from app.api import ai_assistant, dashboard, forecast, inventory, products, upload
     from app.core.config import settings
+    from app.core.database import init_db
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    init_db()
+    yield
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url="/api/openapi.json",
     description="AI-Powered Demand & Inventory Intelligence Platform REST API",
+    lifespan=lifespan,
 )
 
-# CORS — allow all origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origins,
     allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
 
-MOCK_PRODUCTS = [
-    {"id": 1, "sku_id": "SKU001", "product_name": "Wireless Mouse", "category": "Accessories", "price": 799.0, "supplier": "Primary Vendor", "lead_time": 7, "min_safety_stock": 10},
-    {"id": 2, "sku_id": "SKU002", "product_name": "Mechanical Keyboard", "category": "Electronics", "price": 3499.0, "supplier": "Primary Vendor", "lead_time": 10, "min_safety_stock": 10},
-    {"id": 3, "sku_id": "SKU003", "product_name": "USB-C Hub", "category": "Accessories", "price": 1299.0, "supplier": "Primary Vendor", "lead_time": 5, "min_safety_stock": 10},
-    {"id": 4, "sku_id": "SKU004", "product_name": "Noise Cancelling Headphones", "category": "Electronics", "price": 5999.0, "supplier": "Primary Vendor", "lead_time": 14, "min_safety_stock": 10},
-    {"id": 5, "sku_id": "SKU005", "product_name": "Ergonomic Office Chair", "category": "Home", "price": 8999.0, "supplier": "Primary Vendor", "lead_time": 12, "min_safety_stock": 10},
-    {"id": 6, "sku_id": "SKU006", "product_name": "LED Desk Lamp", "category": "Home", "price": 1499.0, "supplier": "Primary Vendor", "lead_time": 7, "min_safety_stock": 10},
-    {"id": 7, "sku_id": "SKU007", "product_name": "Cotton Graphic T-Shirt", "category": "Apparel", "price": 499.0, "supplier": "Primary Vendor", "lead_time": 5, "min_safety_stock": 10},
-    {"id": 8, "sku_id": "SKU008", "product_name": "Denim Jacket", "category": "Apparel", "price": 2499.0, "supplier": "Primary Vendor", "lead_time": 8, "min_safety_stock": 10},
-    {"id": 9, "sku_id": "SKU009", "product_name": "Stainless Steel Water Bottle", "category": "Home", "price": 699.0, "supplier": "Primary Vendor", "lead_time": 4, "min_safety_stock": 10},
-    {"id": 10, "sku_id": "SKU010", "product_name": "Smart Fitness Watch", "category": "Electronics", "price": 4299.0, "supplier": "Primary Vendor", "lead_time": 9, "min_safety_stock": 10},
-]
 
-MOCK_RISK_ITEMS = [
-    {"id": 1, "sku_id": "SKU001", "product_name": "Wireless Mouse", "category": "Accessories", "price": 799.0, "current_stock": 43, "avg_daily_demand": 35.0, "lead_time_days": 7, "lead_time_demand": 245.0, "safety_stock": 28.0, "reorder_point": 273.0, "recommended_quantity": 320, "recommended_purchase_cost": 255680.0, "risk_level": "HIGH", "days_to_stockout": 1.2},
-    {"id": 4, "sku_id": "SKU004", "product_name": "Noise Cancelling Headphones", "category": "Electronics", "price": 5999.0, "current_stock": 25, "avg_daily_demand": 12.0, "lead_time_days": 14, "lead_time_demand": 168.0, "safety_stock": 18.0, "reorder_point": 186.0, "recommended_quantity": 180, "recommended_purchase_cost": 1079820.0, "risk_level": "HIGH", "days_to_stockout": 2.1},
-    {"id": 5, "sku_id": "SKU005", "product_name": "Ergonomic Office Chair", "category": "Home", "price": 8999.0, "current_stock": 14, "avg_daily_demand": 8.0, "lead_time_days": 12, "lead_time_demand": 96.0, "safety_stock": 12.0, "reorder_point": 108.0, "recommended_quantity": 110, "recommended_purchase_cost": 989890.0, "risk_level": "MEDIUM", "days_to_stockout": 1.8},
-    {"id": 10, "sku_id": "SKU010", "product_name": "Smart Fitness Watch", "category": "Electronics", "price": 4299.0, "current_stock": 30, "avg_daily_demand": 18.0, "lead_time_days": 9, "lead_time_demand": 162.0, "safety_stock": 15.0, "reorder_point": 177.0, "recommended_quantity": 190, "recommended_purchase_cost": 816810.0, "risk_level": "MEDIUM", "days_to_stockout": 1.7},
-    {"id": 2, "sku_id": "SKU002", "product_name": "Mechanical Keyboard", "category": "Electronics", "price": 3499.0, "current_stock": 180, "avg_daily_demand": 15.0, "lead_time_days": 10, "lead_time_demand": 150.0, "safety_stock": 20.0, "reorder_point": 170.0, "recommended_quantity": 0, "recommended_purchase_cost": 0.0, "risk_level": "LOW", "days_to_stockout": 12.0},
-    {"id": 3, "sku_id": "SKU003", "product_name": "USB-C Hub", "category": "Accessories", "price": 1299.0, "current_stock": 95, "avg_daily_demand": 28.0, "lead_time_days": 5, "lead_time_demand": 140.0, "safety_stock": 22.0, "reorder_point": 162.0, "recommended_quantity": 0, "recommended_purchase_cost": 0.0, "risk_level": "LOW", "days_to_stockout": 3.4},
-    {"id": 6, "sku_id": "SKU006", "product_name": "LED Desk Lamp", "category": "Home", "price": 1499.0, "current_stock": 210, "avg_daily_demand": 22.0, "lead_time_days": 7, "lead_time_demand": 154.0, "safety_stock": 18.0, "reorder_point": 172.0, "recommended_quantity": 0, "recommended_purchase_cost": 0.0, "risk_level": "OVERSTOCK", "days_to_stockout": 9.5},
-    {"id": 7, "sku_id": "SKU007", "product_name": "Cotton Graphic T-Shirt", "category": "Apparel", "price": 499.0, "current_stock": 80, "avg_daily_demand": 45.0, "lead_time_days": 5, "lead_time_demand": 225.0, "safety_stock": 30.0, "reorder_point": 255.0, "recommended_quantity": 290, "recommended_purchase_cost": 144710.0, "risk_level": "HIGH", "days_to_stockout": 1.8},
-]
-
-
-# Root & Health Endpoints
 @app.get("/")
 @app.get("/api")
 def root():
     return {"status": "online", "project": settings.PROJECT_NAME, "docs": "/docs"}
+
 
 @app.get("/health")
 @app.get("/api/health")
@@ -61,140 +47,5 @@ def health_check():
     return {"status": "healthy", "service": "foresight-backend"}
 
 
-# Products Endpoints
-@app.get("/products")
-@app.get("/api/products")
-def get_products():
-    return MOCK_PRODUCTS
-
-@app.get("/products/{sku_id}")
-@app.get("/api/products/{sku_id}")
-def get_product(sku_id: str):
-    found = next((m for m in MOCK_PRODUCTS if m["sku_id"] == sku_id), None)
-    if not found:
-        raise HTTPException(status_code=404, detail=f"Product '{sku_id}' not found.")
-    return found
-
-
-# Dashboard Endpoints
-@app.get("/dashboard/summary")
-@app.get("/api/dashboard/summary")
-def get_dashboard_summary():
-    return {
-        "total_skus": 10,
-        "total_inventory": 967,
-        "total_sales_volume_30d": 8420,
-        "total_revenue_30d": 1452900.0,
-        "high_risk_skus_count": 2,
-        "medium_risk_skus_count": 3,
-        "low_risk_skus_count": 4,
-        "overstock_skus_count": 1,
-        "recommended_purchase_value": 184500.0,
-    }
-
-@app.get("/dashboard/charts/sales-trend")
-@app.get("/api/dashboard/charts/sales-trend")
-def get_sales_trend():
-    return [
-        {"date": "2025-01-01", "units_sold": 210, "revenue": 45000.0},
-        {"date": "2025-01-05", "units_sold": 240, "revenue": 52000.0},
-        {"date": "2025-01-10", "units_sold": 280, "revenue": 61000.0},
-        {"date": "2025-01-15", "units_sold": 310, "revenue": 68000.0},
-        {"date": "2025-01-20", "units_sold": 290, "revenue": 64000.0},
-        {"date": "2025-01-25", "units_sold": 340, "revenue": 75000.0},
-        {"date": "2025-01-30", "units_sold": 380, "revenue": 82000.0},
-    ]
-
-@app.get("/dashboard/charts/category-demand")
-@app.get("/api/dashboard/charts/category-demand")
-def get_category_demand():
-    return [
-        {"category": "Electronics", "units_sold": 3200, "revenue": 840000.0},
-        {"category": "Accessories", "units_sold": 2800, "revenue": 310000.0},
-        {"category": "Home",        "units_sold": 1400, "revenue": 210000.0},
-        {"category": "Apparel",     "units_sold": 1020, "revenue": 92900.0},
-    ]
-
-
-# Inventory Endpoints
-@app.get("/inventory/risk-matrix")
-@app.get("/api/inventory/risk-matrix")
-def get_risk_matrix():
-    return MOCK_RISK_ITEMS
-
-@app.get("/inventory/recommendations")
-@app.get("/api/inventory/recommendations")
-def get_recommendations():
-    return [item for item in MOCK_RISK_ITEMS if item["recommended_quantity"] > 0]
-
-
-# Forecast Endpoint
-@app.get("/forecast/{sku_id}")
-@app.get("/api/forecast/{sku_id}")
-def get_forecast(sku_id: str, days: int = Query(30)):
-    today = datetime.now()
-    history = [
-        {"date": (today - timedelta(days=d)).strftime("%Y-%m-%d"), "actual_demand": 30.0 + (d % 7) * 4, "predicted_demand": 30.0 + (d % 7) * 4, "lower_bound": 25.0, "upper_bound": 35.0}
-        for d in range(14, 0, -1)
-    ]
-    forecasts = [
-        {"date": (today + timedelta(days=d)).strftime("%Y-%m-%d"), "actual_demand": None, "predicted_demand": round(32.0 + (d % 5) * 3 + (d % 7) * 2, 2), "lower_bound": round(24.0 + (d % 5) * 2, 2), "upper_bound": round(40.0 + (d % 5) * 4, 2)}
-        for d in range(1, days + 1)
-    ]
-    total_pred = sum(f["predicted_demand"] for f in forecasts)
-    found_prod = next((m for m in MOCK_PRODUCTS if m["sku_id"] == sku_id), None)
-    prod_name = found_prod["product_name"] if found_prod else f"Product {sku_id}"
-    cat_name = found_prod["category"] if found_prod else "General"
-
-    return {
-        "sku_id": sku_id,
-        "product_name": prod_name,
-        "category": cat_name,
-        "forecast_days": days,
-        "mae": 2.45,
-        "rmse": 3.12,
-        "mape": 4.8,
-        "predicted_total_demand": round(total_pred, 2),
-        "risk_level": "HIGH" if sku_id in ["SKU001", "SKU004", "SKU007"] else "MEDIUM",
-        "recommended_order_quantity": 320,
-        "forecast": history + forecasts,
-    }
-
-
-# Upload Endpoints
-@app.post("/upload/csv")
-@app.post("/api/upload/csv")
-async def upload_csv(file: UploadFile = File(...)):
-    return {"message": f"File '{file.filename}' processed successfully.", "sku_count": 10}
-
-@app.post("/upload/seed")
-@app.post("/api/upload/seed")
-def seed_data():
-    return {"message": "Sample retail dataset seeded successfully into FORESIGHT engine.", "sku_count": 10}
-
-
-# Assistant Query Endpoint
-@app.post("/assistant/query")
-@app.post("/api/assistant/query")
-def ask_assistant(payload: dict = None):
-    prompt = payload.get("prompt", "") if payload else ""
-    try:
-        try:
-            from backend.app.services.ai_service import AIAssistantService
-            from backend.app.core.database import SessionLocal
-        except ImportError:
-            from app.services.ai_service import AIAssistantService
-            from app.core.database import SessionLocal
-
-        db = SessionLocal()
-        try:
-            return AIAssistantService.answer_query(prompt, db)
-        finally:
-            db.close()
-    except Exception as e:
-        return {
-            "answer": "🤖 **FORESIGHT Executive Summary**\n\n• **Active SKUs Monitored**: 10\n• 🚨 **Critical Risk SKUs**: 2 (SKU001, SKU004)\n• ⚠️ **Warning SKUs**: 2 (SKU005, SKU010)\n• 📦 **Overstock SKUs**: 1 (SKU006)\n• 💰 **Recommended Order Budget**: ₹3,246,200\n\nHow can I assist you with specific demand forecasts or purchase order decisions today?",
-            "summary_data": {"high_risk_count": 2, "medium_risk_count": 2, "total_recommended_cost": 3246200}
-        }
-
-
+for router in (products.router, dashboard.router, inventory.router, forecast.router, upload.router, ai_assistant.router):
+    app.include_router(router, prefix=settings.API_V1_STR)

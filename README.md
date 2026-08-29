@@ -162,7 +162,21 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 Interactive Swagger documentation is available at: [http://localhost:8000/docs](http://localhost:8000/docs).
 
-### 3. Frontend Setup
+### 3. Backend Configuration
+
+Copy `backend/.env.example` to `backend/.env` and configure the values for your environment. The backend uses SQLite locally by default and can use PostgreSQL in production through `DATABASE_URL`.
+
+```env
+DATABASE_URL=sqlite:///./foresight.db
+CORS_ORIGINS=http://localhost:3000
+GEMINI_API_KEY=your_optional_gemini_key
+```
+
+`CORS_ORIGINS` accepts a comma-separated list. On Render, set `DATABASE_URL`, `GEMINI_API_KEY`, and `CORS_ORIGINS` in the service environment rather than committing secrets.
+
+The API initializes its tables on startup. Uploading or seeding data imports transactions, recalculates inventory risks and recommendations, and trains SKU forecasts from the stored sales history.
+
+### 4. Frontend Setup
 ```bash
 # In a new terminal, navigate to frontend directory
 cd frontend
@@ -174,6 +188,8 @@ npm install
 npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+To point the frontend to a local or alternate backend, set `NEXT_PUBLIC_API_URL` to that API's `/api` URL (for example, `http://localhost:8000/api`).
 
 ---
 

@@ -1,10 +1,25 @@
-﻿from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
 
-engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+try:
+    from backend.app.core.config import settings
+except ImportError:
+    from app.core.config import settings
+
+
+connect_args = {"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {}
+engine = create_engine(settings.DATABASE_URL, connect_args=connect_args, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
+
+def init_db() -> None:
+    # Import models before creating metadata so every table is registered.
+    try:
+        import backend.app.models.db_models  # noqa: F401
+    except ImportError:
+        import app.models.db_models  # noqa: F401
+    Base.metadata.create_all(bind=engine)
 
 
 def get_db():

@@ -1,4 +1,4 @@
-﻿import axios from 'axios';
+import axios from 'axios';
 import {
   DashboardSummary,
   SalesTrendItem,
@@ -14,7 +14,7 @@ const getBaseUrl = () => {
     return process.env.NEXT_PUBLIC_API_URL;
   }
   if (typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) {
-    return 'https://pf-backend-3101.vercel.app/api';
+    return 'https://project-foresight-hkov.onrender.com/api';
   }
   return 'http://127.0.0.1:8000/api';
 };

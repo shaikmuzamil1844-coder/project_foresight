@@ -1,7 +1,6 @@
 ﻿from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-import traceback
 import os
 
 try:
@@ -15,22 +14,9 @@ except ImportError:
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    openapi_url="/openapi.json",
+    openapi_url="/api/openapi.json",
     description="AI-Powered Demand & Inventory Intelligence Platform REST API",
 )
-
-# Global Exception Handler – catches all runtime errors and returns detailed JSON diagnostics
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    return JSONResponse(
-        status_code=200,
-        content={
-            "status": "runtime_error",
-            "error": str(exc),
-            "traceback": traceback.format_exc(),
-            "path": request.url.path,
-        }
-    )
 
 # CORS — allow all origins
 app.add_middleware(
@@ -41,15 +27,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register API Routers cleanly without duplicate router mutations
-app.include_router(upload.router)
-app.include_router(products.router)
-app.include_router(dashboard.router)
-app.include_router(forecast.router)
-app.include_router(inventory.router)
-app.include_router(ai_assistant.router)
+# Register API Routers under /api prefix for Vercel zero-config compatibility
+app.include_router(upload.router,       prefix="/api")
+app.include_router(products.router,     prefix="/api")
+app.include_router(dashboard.router,    prefix="/api")
+app.include_router(forecast.router,     prefix="/api")
+app.include_router(inventory.router,    prefix="/api")
+app.include_router(ai_assistant.router, prefix="/api")
 
-# Also mount under /api prefix using distinct router clones if needed
+
 @app.on_event("startup")
 def startup_event():
     """Create database tables on startup."""

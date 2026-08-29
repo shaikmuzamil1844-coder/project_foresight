@@ -2,12 +2,17 @@ from sqlalchemy.orm import Session
 from backend.app.models.db_models import Product, RecommendationRecord, ForecastRecord, SalesRecord
 import os
 import json
+from dotenv import load_dotenv
+
+# Ensure .env is explicitly loaded
+load_dotenv()
+load_dotenv("backend/.env")
 
 try:
-    import google.generativeai as genai
-    HAS_GEMINI = True
+    from google import genai
+    HAS_GENAI = True
 except ImportError:
-    HAS_GEMINI = False
+    HAS_GENAI = False
 
 class AIAssistantService:
     @staticmethod
@@ -53,29 +58,28 @@ class AIAssistantService:
                 total_rec_cost += r.recommended_quantity * p.price
                 total_rec_items += r.recommended_quantity
 
-        # 2. Check for Gemini API Key in Environment
+        # 2. Check for Gemini API Key in Environment using Google GenAI SDK
         gemini_key = os.getenv("GEMINI_API_KEY")
-        if HAS_GEMINI and gemini_key:
+        if HAS_GENAI and gemini_key:
             try:
-                genai.configure(api_key=gemini_key)
-                try:
-                    model = genai.GenerativeModel("gemini-3.6-flash")
-                except Exception:
-                    model = genai.GenerativeModel("gemini-flash-latest")
+                client = genai.Client(api_key=gemini_key)
                 
                 system_prompt = (
-
-
                     "You are FORESIGHT AI, an expert executive supply chain and inventory intelligence advisor.\n"
                     "Use the following real-time database ground truth context to answer the user's question concisely, professionally, and accurately.\n"
                     "Formatting Rules:\n"
                     "- Use GitHub Markdown bullet points and bold highlights.\n"
-                    "- Always ground your answers strictly in the provided database context.\n\n"
+                    "- Always ground your answers strictly in the provided database context.\n"
+                    "- If the user says 'hi' or greets you, respond politely, summarize key inventory metrics, and offer to help.\n\n"
                     f"DATABASE GROUND TRUTH CONTEXT:\n{json.dumps(db_context, indent=2)}\n\n"
                     f"USER QUESTION: {prompt}"
                 )
                 
-                response = model.generate_content(system_prompt)
+                response = client.models.generate_content(
+                    model="gemini-3.6-flash",
+                    contents=system_prompt
+                )
+                
                 if response and response.text:
                     return {
                         "answer": response.text,
@@ -86,7 +90,7 @@ class AIAssistantService:
                         }
                     }
             except Exception as e:
-                print(f"Gemini API fallback to deterministic engine: {e}")
+                print(f"Google GenAI API error: {e}")
 
         # 3. Ground-Truth Deterministic Engine (Fallback / Zero-Hallucination)
         if "reorder" in prompt_lower or "buy" in prompt_lower or "purchase" in prompt_lower:

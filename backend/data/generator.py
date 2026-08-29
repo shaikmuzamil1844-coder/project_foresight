@@ -1,9 +1,9 @@
-import pandas as pd
+﻿import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import os
 
-def generate_sample_data(filepath="backend/data/sample_retail_sales.csv", days=365):
+def generate_sample_data(filepath=None, days=365):
     np.random.seed(42)
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
@@ -29,19 +29,15 @@ def generate_sample_data(filepath="backend/data/sample_retail_sales.csv", days=3
         cat = prod["category"]
         price = prod["price"]
         lead_time = prod["lead_time"]
-        base_demand = prod["base_demand"]
         stock = prod["current_stock"]
+        base_demand = prod["base_demand"]
 
         for d in dates:
-            # Day of week seasonality: Friday/Saturday +30%
             day_mult = 1.3 if d.weekday() in [4, 5] else 1.0
-            # Monthly seasonality: November/December holiday surge +40%
             month_mult = 1.4 if d.month in [11, 12] else 1.0
-            # Random noise
             noise = np.random.normal(1.0, 0.15)
-
             demand = int(max(0, round(base_demand * day_mult * month_mult * noise)))
-            
+
             rows.append({
                 "date": d.strftime("%Y-%m-%d"),
                 "sku_id": sku,
@@ -54,10 +50,13 @@ def generate_sample_data(filepath="backend/data/sample_retail_sales.csv", days=3
             })
 
     df = pd.DataFrame(rows)
-    os.makedirs(os.path.dirname(filepath), exist_ok=True)
-    df.to_csv(filepath, index=False)
-    print(f"Generated sample retail dataset at {filepath} with {len(df)} rows.")
+    if filepath:
+        try:
+            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+            df.to_csv(filepath, index=False)
+        except Exception:
+            pass
     return df
 
 if __name__ == "__main__":
-    generate_sample_data()
+    generate_sample_data("backend/data/sample_retail_sales.csv")

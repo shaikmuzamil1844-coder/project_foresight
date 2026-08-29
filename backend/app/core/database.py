@@ -3,7 +3,6 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
 import os
-import ssl
 
 try:
     from backend.app.core.config import settings
@@ -12,11 +11,13 @@ except ImportError:
 
 db_url = os.getenv("DATABASE_URL", settings.DATABASE_URL)
 
-# Convert postgres:// or postgresql:// to postgresql+pg8000://
+# Normalize postgres:// to postgresql://
 if db_url.startswith("postgres://"):
-    db_url = db_url.replace("postgres://", "postgresql+pg8000://", 1)
-elif db_url.startswith("postgresql://") and "+pg8000" not in db_url:
-    db_url = db_url.replace("postgresql://", "postgresql+pg8000://", 1)
+    db_url = db_url.replace("postgres://", "postgresql://", 1)
+
+# Clean up pg8000 prefix if present
+if "postgresql+pg8000://" in db_url:
+    db_url = db_url.replace("postgresql+pg8000://", "postgresql://", 1)
 
 # In-memory fallback if using default sqlite on Vercel
 if db_url.startswith("sqlite") and os.getenv("VERCEL"):
@@ -25,13 +26,9 @@ if db_url.startswith("sqlite") and os.getenv("VERCEL"):
 if db_url.startswith("sqlite"):
     engine_kwargs = {"connect_args": {"check_same_thread": False}}
 else:
-    ssl_ctx = ssl.create_default_context()
-    ssl_ctx.check_hostname = False
-    ssl_ctx.verify_mode = ssl.CERT_NONE
-
     engine_kwargs = {
         "poolclass": NullPool,
-        "connect_args": {"ssl_context": ssl_ctx},
+        "pool_pre_ping": True,
     }
 
 try:
@@ -45,16 +42,12 @@ Base = declarative_base()
 
 
 def get_db():
-    """
-    FastAPI dependency yielding a database session.
-    Guaranteed to yield a working Session (PostgreSQL or in-memory SQLite) with zero 500 crashes.
-    """
     db = None
     try:
         db = SessionLocal()
         yield db
     except Exception as e:
-        print(f"Primary DB session error ({e}) – switching to in-memory SQLite dependency")
+        print(f"Primary DB session error: {e}")
         fb_engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
         Base.metadata.create_all(bind=fb_engine)
         fb_session = sessionmaker(bind=fb_engine)()

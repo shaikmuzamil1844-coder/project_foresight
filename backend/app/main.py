@@ -15,7 +15,6 @@ except ImportError:
     from app.core.database import engine, Base, SessionLocal
     from app.api import upload, products, dashboard, forecast, inventory, ai_assistant
     try:
-        # data generator is optional on Vercel (read-only filesystem)
         from data.generator import generate_sample_data
     except ImportError:
         generate_sample_data = None
@@ -26,7 +25,7 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    openapi_url="/openapi.json",
     description="AI-Powered Demand & Inventory Intelligence Platform REST API",
 )
 
@@ -34,23 +33,24 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False,   # must be False when allow_origins=["*"]
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Register API Routers
-app.include_router(upload.router,       prefix=settings.API_V1_STR)
-app.include_router(products.router,     prefix=settings.API_V1_STR)
-app.include_router(dashboard.router,    prefix=settings.API_V1_STR)
-app.include_router(forecast.router,     prefix=settings.API_V1_STR)
-app.include_router(inventory.router,    prefix=settings.API_V1_STR)
-app.include_router(ai_assistant.router, prefix=settings.API_V1_STR)
+# Register API Routers under BOTH "" and "/api" so Vercel path prefix stripping works seamlessly
+for prefix in ["", "/api"]:
+    app.include_router(upload.router,       prefix=prefix)
+    app.include_router(products.router,     prefix=prefix)
+    app.include_router(dashboard.router,    prefix=prefix)
+    app.include_router(forecast.router,     prefix=prefix)
+    app.include_router(inventory.router,    prefix=prefix)
+    app.include_router(ai_assistant.router, prefix=prefix)
 
 
 @app.on_event("startup")
 def startup_event():
-    """Auto-seed database if empty (skipped silently on Vercel read-only FS)."""
+    """Auto-seed database if empty."""
     db = SessionLocal()
     try:
         try:
@@ -60,7 +60,6 @@ def startup_event():
 
         if db.query(Product).count() == 0:
             print("Database empty – attempting auto-seed...")
-            # Try multiple candidate paths for the CSV
             candidates = [
                 "backend/data/sample_retail_sales.csv",
                 "data/sample_retail_sales.csv",
@@ -77,8 +76,6 @@ def startup_event():
                 df = pd.read_csv(filepath)
                 DataProcessor.ingest_dataframe(df, db)
                 print("Sample dataset loaded successfully.")
-            else:
-                print("No CSV found and generator unavailable – skipping auto-seed.")
     except Exception as e:
         print(f"Startup auto-seed note: {e}")
     finally:
@@ -86,10 +83,12 @@ def startup_event():
 
 
 @app.get("/")
+@app.get("/api")
 def root():
     return {"status": "online", "project": settings.PROJECT_NAME, "docs": "/docs"}
 
 
+@app.get("/health")
 @app.get("/api/health")
 def health_check():
     return {"status": "healthy", "service": "foresight-backend"}

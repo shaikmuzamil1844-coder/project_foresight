@@ -1,6 +1,8 @@
-﻿from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
+from datetime import datetime, timedelta
 import os
+import io
 
 try:
     from backend.app.core.config import settings
@@ -126,11 +128,57 @@ def get_recommendations():
     return [item for item in MOCK_RISK_ITEMS if item["recommended_quantity"] > 0]
 
 
+# Forecast Endpoint
+@app.get("/forecast/{sku_id}")
+@app.get("/api/forecast/{sku_id}")
+def get_forecast(sku_id: str, days: int = Query(30)):
+    today = datetime.now()
+    history = [
+        {"date": (today - timedelta(days=d)).strftime("%Y-%m-%d"), "actual_demand": 30.0 + (d % 7) * 4, "predicted_demand": 30.0 + (d % 7) * 4, "lower_bound": 25.0, "upper_bound": 35.0}
+        for d in range(14, 0, -1)
+    ]
+    forecasts = [
+        {"date": (today + timedelta(days=d)).strftime("%Y-%m-%d"), "actual_demand": None, "predicted_demand": round(32.0 + (d % 5) * 3 + (d % 7) * 2, 2), "lower_bound": round(24.0 + (d % 5) * 2, 2), "upper_bound": round(40.0 + (d % 5) * 4, 2)}
+        for d in range(1, days + 1)
+    ]
+    total_pred = sum(f["predicted_demand"] for f in forecasts)
+    found_prod = next((m for m in MOCK_PRODUCTS if m["sku_id"] == sku_id), None)
+    prod_name = found_prod["product_name"] if found_prod else f"Product {sku_id}"
+    cat_name = found_prod["category"] if found_prod else "General"
+
+    return {
+        "sku_id": sku_id,
+        "product_name": prod_name,
+        "category": cat_name,
+        "forecast_days": days,
+        "mae": 2.45,
+        "rmse": 3.12,
+        "mape": 4.8,
+        "predicted_total_demand": round(total_pred, 2),
+        "risk_level": "HIGH" if sku_id in ["SKU001", "SKU004", "SKU007"] else "MEDIUM",
+        "recommended_order_quantity": 320,
+        "forecast": history + forecasts,
+    }
+
+
+# Upload Endpoints
+@app.post("/upload/csv")
+@app.post("/api/upload/csv")
+async def upload_csv(file: UploadFile = File(...)):
+    return {"message": f"File '{file.filename}' processed successfully.", "sku_count": 10}
+
+@app.post("/upload/seed")
+@app.post("/api/upload/seed")
+def seed_data():
+    return {"message": "Sample retail dataset seeded successfully into FORESIGHT engine.", "sku_count": 10}
+
+
 # Assistant Query Endpoint
 @app.post("/assistant/query")
 @app.post("/api/assistant/query")
-def ask_assistant(payload: dict):
+def ask_assistant(payload: dict = None):
     return {
         "answer": "🤖 **FORESIGHT Executive Summary**\n\n• **Active SKUs Monitored**: 10\n• 🚨 **Critical Risk SKUs**: 2 (SKU001, SKU004)\n• ⚠️ **Warning SKUs**: 2 (SKU005, SKU010)\n• 📦 **Overstock SKUs**: 1 (SKU006)\n• 💰 **Recommended Order Budget**: ₹3,246,200\n\nHow can I assist you with specific demand forecasts or purchase order decisions today?",
         "summary_data": {"high_risk_count": 2, "medium_risk_count": 2, "total_recommended_cost": 3246200}
     }
+

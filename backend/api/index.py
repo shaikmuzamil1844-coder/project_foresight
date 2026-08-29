@@ -1,8 +1,7 @@
-﻿import sys
+import sys
 import os
 import traceback
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI
 
 _base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _base not in sys.path:
@@ -10,26 +9,12 @@ if _base not in sys.path:
 
 try:
     from app.main import app
-
-    @app.middleware("http")
-    async def catch_exceptions_middleware(request: Request, call_next):
-        try:
-            return await call_next(request)
-        except Exception as exc:
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "error": str(exc),
-                    "traceback": traceback.format_exc(),
-                    "path": request.url.path
-                }
-            )
-
 except Exception as e:
-    app = FastAPI()
     err_str = f"{e}\n{traceback.format_exc()}"
+    app = FastAPI()
 
     @app.get("/{full_path:path}")
     @app.post("/{full_path:path}")
     def fallback(full_path: str):
-        return {"import_error": err_str}
+        return {"error": "Server initialization error", "details": err_str}
+

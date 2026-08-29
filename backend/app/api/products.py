@@ -1,5 +1,7 @@
 ﻿from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 from typing import List
 
 try:
@@ -22,29 +24,37 @@ except ImportError:
 router = APIRouter(prefix="/products", tags=["Products"])
 
 
-def _ensure_products(db: Session):
-    try:
-        Base.metadata.create_all(bind=engine)
-        if db.query(Product).count() == 0 and DataProcessor and generate_sample_data:
-            df = generate_sample_data()
-            DataProcessor.ingest_dataframe(df, db)
-    except Exception as e:
-        print(f"Ensure products note: {e}")
+def _get_fallback_session():
+    fb_engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    Base.metadata.create_all(bind=fb_engine)
+    fb_db = sessionmaker(bind=fb_engine)()
+    if fb_db.query(Product).count() == 0 and DataProcessor and generate_sample_data:
+        df = generate_sample_data()
+        DataProcessor.ingest_dataframe(df, fb_db)
+    return fb_db
 
 
 @router.get("", response_model=List[ProductOut])
 def get_all_products(db: Session = Depends(get_db)):
-    _ensure_products(db)
     try:
         return db.query(Product).order_by(Product.sku_id).all()
-    except Exception:
-        return []
+    except Exception as e:
+        print(f"Products DB error fallback: {e}")
+        fb_db = _get_fallback_session()
+        res = fb_db.query(Product).order_by(Product.sku_id).all()
+        fb_db.close()
+        return res
 
 
 @router.get("/{sku_id}", response_model=ProductOut)
 def get_product_by_sku(sku_id: str, db: Session = Depends(get_db)):
-    _ensure_products(db)
-    product = db.query(Product).filter(Product.sku_id == sku_id).first()
+    try:
+        product = db.query(Product).filter(Product.sku_id == sku_id).first()
+    except Exception:
+        fb_db = _get_fallback_session()
+        product = fb_db.query(Product).filter(Product.sku_id == sku_id).first()
+        fb_db.close()
+
     if not product:
         raise HTTPException(status_code=404, detail=f"Product '{sku_id}' not found.")
     return product

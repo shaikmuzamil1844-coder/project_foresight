@@ -8,9 +8,9 @@ class ProductBase(BaseModel):
     product_name:     str
     category:         str
     price:            float
-    supplier:         Optional[str] = "Default Supplier"
-    lead_time:        int           = 7
-    min_safety_stock: int           = 10
+    supplier:         Optional[str] = "Primary Vendor"
+    lead_time:        Optional[int] = 7
+    min_safety_stock: Optional[int] = 10
 
 
 class ProductCreate(ProductBase):
@@ -18,7 +18,7 @@ class ProductCreate(ProductBase):
 
 
 class ProductOut(ProductBase):
-    id: int
+    id: Optional[int] = 1
 
     class Config:
         from_attributes = True
@@ -67,7 +67,7 @@ class ForecastRequest(BaseModel):
 
 # ── Inventory / Risk ──────────────────────────────────────────────────────────
 class RiskItem(BaseModel):
-    id:                       int
+    id:                       Optional[int] = 1
     sku_id:                   str
     product_name:             str
     category:                 str
@@ -82,6 +82,9 @@ class RiskItem(BaseModel):
     recommended_purchase_cost: float
     risk_level:               str
     days_to_stockout:         float
+
+    class Config:
+        from_attributes = True
 
 
 # ── AI Assistant ──────────────────────────────────────────────────────────────

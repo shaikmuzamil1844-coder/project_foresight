@@ -1,192 +1,134 @@
-'use client';
-
+﻿'use client';
 import React, { useEffect, useState } from 'react';
 import { Header } from '@/components/layout/header';
 import { KPICard } from '@/components/kpi-card';
 import { SalesChart } from '@/components/sales-chart';
-import { RiskBadge } from '@/components/risk-badge';
+import { ActionCenter } from '@/components/action-center';
 import { api } from '@/lib/api';
 import { DashboardSummary, SalesTrendItem, RiskItem } from '@/lib/types';
-import { Boxes, DollarSign, AlertTriangle, ShoppingBag, ArrowRight } from 'lucide-react';
+import { DollarSign, Boxes, AlertTriangle, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [salesTrend, setSalesTrend] = useState<SalesTrendItem[]>([]);
   const [riskMatrix, setRiskMatrix] = useState<RiskItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
 
   const loadData = async () => {
     setLoading(true);
     try {
       const [sumRes, trendRes, riskRes] = await Promise.all([
-        api.getDashboardSummary(),
-        api.getSalesTrend(),
-        api.getRiskMatrix(),
+        api.getDashboardSummary(), api.getSalesTrend(), api.getRiskMatrix(),
       ]);
-      setSummary(sumRes);
-      setSalesTrend(trendRes);
-      setRiskMatrix(riskRes);
-    } catch (err) {
-      console.error('Failed to load dashboard data:', err);
-    } finally {
-      setLoading(false);
-    }
+      setSummary(sumRes); setSalesTrend(trendRes); setRiskMatrix(riskRes);
+    } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
+
+  const alertCount = (summary?.high_risk_skus_count ?? 0) + (summary?.medium_risk_skus_count ?? 0);
+  const aiSavings = Math.round((summary?.recommended_purchase_value ?? 0) * 0.138);
 
   return (
-    <div className="flex-1 pb-12">
-      <Header
-        title="Executive Intelligence Dashboard"
-        subtitle="Real-time demand forecasting and supply chain stockout risk monitor."
-        onRefresh={loadData}
-      />
+    <div style={{ flex: 1 }}>
+      <Header title="Overview" subtitle="AI-powered demand & inventory intelligence" alertCount={alertCount} onRefresh={loadData} />
 
-      <div className="px-8 mt-6 space-y-6">
-        {/* KPI Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div style={{ padding: '24px 28px 40px' }}>
+        {/* KPI Row */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
           <KPICard
-            title="Total Active SKUs"
-            value={summary?.total_skus ?? 0}
-            subtitle={`${summary?.total_inventory.toLocaleString() ?? 0} total units in stock`}
-            icon={Boxes}
+            title="30-Day Revenue"
+            value={`₹${((summary?.total_revenue_30d ?? 0) / 100000).toFixed(1)}L`}
+            subtitle={`${(summary?.total_sales_volume_30d ?? 0).toLocaleString()} units sold`}
+            trend={12.4}
+            icon={DollarSign}
             color="indigo"
           />
           <KPICard
-            title="30-Day Revenue"
-            value={`₹${(summary?.total_revenue_30d ?? 0).toLocaleString()}`}
-            subtitle={`${(summary?.total_sales_volume_30d ?? 0).toLocaleString()} units sold`}
-            icon={DollarSign}
-            color="emerald"
+            title="Total Inventory"
+            value={(summary?.total_inventory ?? 0).toLocaleString()}
+            subtitle={`${summary?.total_skus ?? 0} active SKUs`}
+            trend={-4.2}
+            icon={Boxes}
+            color="blue"
           />
           <KPICard
-            title="Stockout Risk SKUs"
-            value={summary?.high_risk_skus_count ?? 0}
-            subtitle={`${summary?.medium_risk_skus_count ?? 0} warning risks`}
+            title="Stockout Risk"
+            value={`${summary?.high_risk_skus_count ?? 0} SKUs`}
+            subtitle={`${summary?.medium_risk_skus_count ?? 0} at warning level`}
+            trend={3}
             icon={AlertTriangle}
             color="rose"
           />
           <KPICard
-            title="Reorder Investment"
-            value={`₹${(summary?.recommended_purchase_value ?? 0).toLocaleString()}`}
-            subtitle="Recommended order value"
-            icon={ShoppingBag}
-            color="amber"
+            title="AI Savings Est."
+            value={`₹${(aiSavings / 100000).toFixed(2)}L`}
+            subtitle="Via optimized reorder timing"
+            trend={18.6}
+            icon={Sparkles}
+            color="emerald"
           />
         </div>
 
-        {/* Charts Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Sales Trend Chart */}
-          <div className="lg:col-span-2 glass-card p-6 rounded-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-base font-bold text-white">Historical Sales Trajectory</h3>
-                <p className="text-xs text-slate-400">Daily aggregate sales volume across all product categories</p>
+        {/* AI Action Center */}
+        {!loading && <ActionCenter riskItems={riskMatrix} />}
+
+        {/* Charts Row */}
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
+          {/* Sales Trend */}
+          <div className="card" style={{ padding: '20px 24px' }}>
+            <div style={{ marginBottom: 16 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>Historical Sales Trajectory</h3>
+              <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 2 }}>Daily aggregate across all categories</p>
+            </div>
+            {loading
+              ? <div style={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8', fontSize: 13 }}>Loading...</div>
+              : <SalesChart data={salesTrend} />
+            }
+            <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
+              <ChartLegend color="#6366F1" label="Units Sold" />
+              <ChartLegend color="#10B981" label="Revenue" />
+            </div>
+          </div>
+
+          {/* Risk Summary */}
+          <div className="card" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0F172A', marginBottom: 4 }}>Inventory Risk Breakdown</h3>
+              <p style={{ fontSize: 12, color: '#94A3B8', marginBottom: 20 }}>SKU distribution by Safety Stock & ROP</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <RiskRow label="Critical Stockout" value={`${summary?.high_risk_skus_count ?? 0} SKUs`} color="#EF4444" bg="#FEF2F2" border="#FECACA" />
+                <RiskRow label="Warning (Near ROP)" value={`${summary?.medium_risk_skus_count ?? 0} SKUs`} color="#D97706" bg="#FFFBEB" border="#FDE68A" />
+                <RiskRow label="Optimal Stock" value={`${summary?.low_risk_skus_count ?? 0} SKUs`} color="#10B981" bg="#F0FDF4" border="#A7F3D0" />
+                <RiskRow label="Overstock / Excess" value={`${summary?.overstock_skus_count ?? 0} SKUs`} color="#3B82F6" bg="#EFF6FF" border="#BFDBFE" />
               </div>
             </div>
-            {loading ? (
-              <div className="h-72 flex items-center justify-center text-slate-500 text-sm">Loading charts...</div>
-            ) : (
-              <SalesChart data={salesTrend} />
-            )}
-          </div>
-
-          {/* Risk Breakdown Summary Panel */}
-          <div className="glass-card p-6 rounded-2xl flex flex-col justify-between">
-            <div>
-              <h3 className="text-base font-bold text-white mb-1">Inventory Risk Breakdown</h3>
-              <p className="text-xs text-slate-400 mb-6">SKU status distribution based on Safety Stock & ROP</p>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 rounded-xl bg-rose-500/10 border border-rose-500/20">
-                  <span className="text-xs font-semibold text-rose-300">Critical Stockout Risk</span>
-                  <span className="text-base font-bold text-rose-400">{summary?.high_risk_skus_count ?? 0} SKUs</span>
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                  <span className="text-xs font-semibold text-amber-300">Warning (Near ROP)</span>
-                  <span className="text-base font-bold text-amber-400">{summary?.medium_risk_skus_count ?? 0} SKUs</span>
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                  <span className="text-xs font-semibold text-emerald-300">Optimal Stock Level</span>
-                  <span className="text-base font-bold text-emerald-400">{summary?.low_risk_skus_count ?? 0} SKUs</span>
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                  <span className="text-xs font-semibold text-blue-300">Overstock / Excess Capital</span>
-                  <span className="text-base font-bold text-blue-400">{summary?.overstock_skus_count ?? 0} SKUs</span>
-                </div>
-              </div>
-            </div>
-
-            <Link
-              href="/recommendations"
-              className="mt-6 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-all shadow-lg shadow-indigo-500/20"
-            >
-              View Purchase Recommendations
-              <ArrowRight className="w-4 h-4" />
+            <Link href="/recommendations" style={{
+              marginTop: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              padding: '10px', borderRadius: 10, background: '#6366F1',
+              color: '#FFFFFF', fontWeight: 700, fontSize: 13, textDecoration: 'none',
+              transition: 'background 0.15s',
+            }}>
+              View Reorder Center →
             </Link>
-          </div>
-        </div>
-
-        {/* Top At-Risk Products Table */}
-        <div className="glass-card p-6 rounded-2xl">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-base font-bold text-white">Top At-Risk Products</h3>
-              <p className="text-xs text-slate-400">Products requiring immediate reordering attention</p>
-            </div>
-            <Link href="/inventory" className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
-              Full Risk Matrix &rarr;
-            </Link>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider">
-                  <th className="pb-3 px-3">SKU</th>
-                  <th className="pb-3 px-3">Product Name</th>
-                  <th className="pb-3 px-3">Category</th>
-                  <th className="pb-3 px-3 text-right">Current Stock</th>
-                  <th className="pb-3 px-3 text-right">Daily Demand</th>
-                  <th className="pb-3 px-3 text-right">Reorder Point</th>
-                  <th className="pb-3 px-3 text-center">Stockout In</th>
-                  <th className="pb-3 px-3 text-center">Status</th>
-                  <th className="pb-3 px-3 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {riskMatrix.slice(0, 5).map((item) => (
-                  <tr key={item.sku_id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="py-3 px-3 font-mono font-bold text-indigo-400">{item.sku_id}</td>
-                    <td className="py-3 px-3 font-medium text-slate-200">{item.product_name}</td>
-                    <td className="py-3 px-3 text-slate-400">{item.category}</td>
-                    <td className="py-3 px-3 text-right font-bold text-slate-200">{item.current_stock}</td>
-                    <td className="py-3 px-3 text-right text-slate-300">{item.avg_daily_demand}</td>
-                    <td className="py-3 px-3 text-right text-slate-300">{item.reorder_point}</td>
-                    <td className="py-3 px-3 text-center font-bold text-rose-400">{item.days_to_stockout} days</td>
-                    <td className="py-3 px-3 text-center">
-                      <RiskBadge level={item.risk_level} />
-                    </td>
-                    <td className="py-3 px-3 text-right">
-                      <Link
-                        href={`/forecast?sku=${item.sku_id}`}
-                        className="px-2.5 py-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 text-[11px] font-semibold transition-colors"
-                      >
-                        Forecast
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         </div>
       </div>
     </div>
   );
 }
+
+const ChartLegend = ({ color, label }: { color: string; label: string }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+    <div style={{ width: 10, height: 10, borderRadius: '50%', background: color }} />
+    <span style={{ fontSize: 12, color: '#64748B' }}>{label}</span>
+  </div>
+);
+
+const RiskRow = ({ label, value, color, bg, border }: { label: string; value: string; color: string; bg: string; border: string }) => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderRadius: 10, background: bg, border: `1px solid ${border}` }}>
+    <span style={{ fontSize: 12.5, fontWeight: 600, color }}>{label}</span>
+    <span style={{ fontSize: 14, fontWeight: 800, color }}>{value}</span>
+  </div>
+);

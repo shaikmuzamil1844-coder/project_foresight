@@ -65,4 +65,15 @@ export const api = {
     const res = await axios.post(`${API_BASE_URL}/assistant/query`, { prompt });
     return res.data;
   },
+
+  askAssistant: async (prompt: string): Promise<AIQueryResponse> => {
+    const res = await axios.post(`${API_BASE_URL}/assistant/query`, { prompt });
+    return res.data;
+  },
+
+  seedDatabase: async () => {
+    const res = await axios.post(`${API_BASE_URL}/upload/seed`);
+    return res.data;
+  },
 };
+

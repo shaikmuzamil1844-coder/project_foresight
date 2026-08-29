@@ -10,16 +10,18 @@ import {
   ShoppingCart,
   UploadCloud,
   Bot,
-  BrainCircuit,
-  Sparkles,
+  Package,
+  Zap,
+  Settings,
 } from 'lucide-react';
 
 const navigation = [
-  { name: 'Executive Overview', href: '/', icon: LayoutDashboard },
-  { name: 'SKU Demand Forecast', href: '/forecast', icon: TrendingUp },
+  { name: 'Overview', href: '/', icon: LayoutDashboard },
+  { name: 'Demand Forecast', href: '/forecast', icon: TrendingUp },
   { name: 'Inventory Intelligence', href: '/inventory', icon: Boxes },
-  { name: 'Reorder Recommendations', href: '/recommendations', icon: ShoppingCart },
-  { name: 'Dataset Upload', href: '/upload', icon: UploadCloud },
+  { name: 'Reorder Center', href: '/recommendations', icon: ShoppingCart },
+  { name: 'Products', href: '/products', icon: Package },
+  { name: 'Data Management', href: '/upload', icon: UploadCloud },
   { name: 'Ask Foresight AI', href: '/assistant', icon: Bot },
 ];
 
@@ -27,25 +29,49 @@ export const Sidebar: React.FC = () => {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 bg-slate-900/90 border-r border-slate-800 flex flex-col justify-between shrink-0 h-screen sticky top-0 backdrop-blur-xl">
+    <aside
+      style={{
+        width: 236,
+        background: '#FFFFFF',
+        borderRight: '1px solid #E2E8F0',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        height: '100vh',
+        position: 'sticky',
+        top: 0,
+        flexShrink: 0,
+      }}
+    >
       <div>
-        {/* Brand Logo Header */}
-        <div className="h-16 flex items-center gap-3 px-6 border-b border-slate-800/80">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <BrainCircuit className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="font-black text-lg tracking-wider text-white bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400">
-              FORESIGHT
-            </h1>
-            <p className="text-[10px] uppercase tracking-widest text-indigo-400 font-semibold">
-              Demand & Inventory AI
-            </p>
+        {/* Brand */}
+        <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid #F1F5F9' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 34, height: 34, borderRadius: 10,
+              background: 'linear-gradient(135deg, #6366F1, #7C3AED)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(99,102,241,0.3)',
+              flexShrink: 0,
+            }}>
+              <Zap size={16} color="white" strokeWidth={2.5} />
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', letterSpacing: '0.04em' }}>
+                FORESIGHT
+              </div>
+              <div style={{ fontSize: 10, color: '#6366F1', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                Inventory AI
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Navigation Links */}
-        <nav className="p-4 space-y-1.5">
+        {/* Nav */}
+        <nav style={{ padding: '12px 12px 0' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 8px 10px' }}>
+            Main Menu
+          </div>
           {navigation.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
@@ -53,32 +79,75 @@ export const Sidebar: React.FC = () => {
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
-                  isActive
-                    ? 'bg-gradient-to-r from-indigo-600/90 to-indigo-500 text-white shadow-md shadow-indigo-500/20 font-semibold'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
-                }`}
+                className="sidebar-nav-item"
+                style={isActive ? {
+                  background: '#EEF2FF',
+                  color: '#4F46E5',
+                  fontWeight: 600,
+                } : {}}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                {item.name}
+                <Icon
+                  size={16}
+                  color={isActive ? '#4F46E5' : '#94A3B8'}
+                  strokeWidth={isActive ? 2.5 : 2}
+                />
+                <span style={{ fontSize: 13.5 }}>{item.name}</span>
               </Link>
             );
           })}
         </nav>
       </div>
 
-      {/* Model & AI Status Footer */}
-      <div className="p-4 border-t border-slate-800/80">
-        <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/60 flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400">
-            <Sparkles className="w-4 h-4" />
+      {/* Footer */}
+      <div style={{ padding: '16px 12px', borderTop: '1px solid #F1F5F9' }}>
+        {/* Model Status */}
+        <div style={{
+          background: '#F8FAFC', borderRadius: 10, padding: '10px 12px',
+          border: '1px solid #E2E8F0', marginBottom: 12,
+          display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <div style={{
+            width: 28, height: 28, borderRadius: 8,
+            background: 'linear-gradient(135deg, #EEF2FF, #E0E7FF)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}>
+            <Zap size={13} color="#6366F1" strokeWidth={2.5} />
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-200">XGBoost Engine</p>
-            <p className="text-[11px] text-slate-400">Active Horizon: 30D</p>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>XGBoost Engine</div>
+            <div style={{ fontSize: 11, color: '#94A3B8' }}>30-Day Horizon Active</div>
           </div>
         </div>
+
+        {/* Avatar */}
+        <Link
+          href="/settings"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '8px 10px', borderRadius: 10,
+            transition: 'background 0.15s',
+            textDecoration: 'none',
+          }}
+          className="card-hover"
+        >
+          <div style={{
+            width: 30, height: 30, borderRadius: '50%',
+            background: 'linear-gradient(135deg, #6366F1, #7C3AED)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'white', fontWeight: 700, fontSize: 12, flexShrink: 0,
+          }}>
+            M
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              Muzamil
+            </div>
+            <div style={{ fontSize: 11, color: '#94A3B8' }}>Analyst</div>
+          </div>
+          <Settings size={14} color="#CBD5E1" />
+        </Link>
       </div>
     </aside>
   );
 };
+

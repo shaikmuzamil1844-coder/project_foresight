@@ -12,8 +12,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className="flex min-h-screen bg-slate-950 text-slate-100 antialiased">
+    <html lang="en">
+      <body className="flex min-h-screen antialiased" style={{ backgroundColor: '#F7F8FC', color: '#0F172A', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
         <Sidebar />
         <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
           {children}
@@ -22,3 +22,4 @@ export default function RootLayout({
     </html>
   );
 }
+

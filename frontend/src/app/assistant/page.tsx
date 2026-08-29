@@ -1,133 +1,109 @@
-'use client';
-
-import React, { useState } from 'react';
+﻿'use client';
+import React, { useEffect, useState, useRef } from 'react';
 import { Header } from '@/components/layout/header';
 import { api } from '@/lib/api';
-import { Bot, Send, User, Sparkles, AlertTriangle, ShoppingCart, ShieldAlert } from 'lucide-react';
+import { Send, Sparkles, User } from 'lucide-react';
 
-interface Message {
-  id: string;
-  sender: 'user' | 'assistant';
-  text: string;
-}
+interface Message { role: 'user' | 'ai'; text: string; }
+
+const SUGGESTED = [
+  'What should I reorder today?',
+  'Which SKUs are at critical risk?',
+  'Which products are overstocked?',
+  'Give me an executive summary.',
+];
 
 export default function AssistantPage() {
   const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      sender: 'assistant',
-      text: "👋 **Welcome to Ask Foresight!** I am your AI Executive Supply Chain Assistant. Ask me anything about current stockout risks, recommended reorder budgets, or inventory health.",
-    },
+    { role: 'ai', text: 'Hi! I am **FORESIGHT AI**, your inventory intelligence advisor. I have access to your real-time database. Ask me anything about your stock, forecasts, or reorder priorities.' },
   ]);
-  const [input, setInput] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(false);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-  const handleSend = async (queryText?: string) => {
-    const textToSend = queryText || input;
-    if (!textToSend.trim()) return;
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
-    const userMsg: Message = { id: Date.now().toString(), sender: 'user', text: textToSend };
-    setMessages((prev) => [...prev, userMsg]);
-    if (!queryText) setInput('');
+  const send = async (text: string) => {
+    if (!text.trim() || loading) return;
+    setMessages((prev) => [...prev, { role: 'user', text }]);
+    setInput('');
     setLoading(true);
-
     try {
-      const res = await api.askAI(textToSend);
-      const aiMsg: Message = { id: (Date.now() + 1).toString(), sender: 'assistant', text: res.answer };
-      setMessages((prev) => [...prev, aiMsg]);
-    } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        { id: (Date.now() + 1).toString(), sender: 'assistant', text: '⚠️ Apologies, failed to retrieve AI analysis.' },
-      ]);
-    } finally {
-      setLoading(false);
-    }
+      const res = await api.askAssistant(text);
+      setMessages((prev) => [...prev, { role: 'ai', text: res.answer }]);
+    } catch { setMessages((prev) => [...prev, { role: 'ai', text: 'Sorry, I could not connect to the backend. Please ensure FastAPI is running.' }]); }
+    finally { setLoading(false); }
   };
 
-  const suggestions = [
-    'What should I reorder this week?',
-    'Which SKUs are at critical stockout risk?',
-    'What is our total recommended purchase budget?',
-    'Are any products overstocked?',
-  ];
-
   return (
-    <div className="flex-1 flex flex-col h-screen overflow-hidden">
-      <Header
-        title="Ask Foresight – AI Executive Assistant"
-        subtitle="Natural language query assistant explaining stockout risks, safety stock levels, and procurement decisions."
-      />
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <Header title="Ask Foresight AI" subtitle="Natural language inventory intelligence powered by Gemini" />
 
-      <div className="flex-1 flex flex-col p-8 overflow-hidden max-w-4xl mx-auto w-full">
-        {/* Quick Suggestion Chips */}
-        <div className="flex flex-wrap gap-2 mb-4 shrink-0">
-          {suggestions.map((s, idx) => (
-            <button
-              key={idx}
-              onClick={() => handleSend(s)}
-              className="text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 transition-colors"
-            >
-              💡 {s}
+      {/* Suggested Prompts */}
+      <div style={{ padding: '16px 28px 0', borderBottom: '1px solid #F1F5F9' }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingBottom: 14 }}>
+          {SUGGESTED.map((s) => (
+            <button key={s} onClick={() => send(s)}
+              style={{ padding: '6px 14px', borderRadius: 999, background: '#EEF2FF', border: '1px solid #C7D2FE', fontSize: 12.5, fontWeight: 600, color: '#4F46E5', cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif", transition: 'all 0.15s' }}>
+              {s}
             </button>
           ))}
         </div>
+      </div>
 
-        {/* Chat Stream Window */}
-        <div className="flex-1 glass-card p-6 rounded-2xl overflow-y-auto space-y-4">
-          {messages.map((m) => (
-            <div
-              key={m.id}
-              className={`flex gap-3 ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              {m.sender === 'assistant' && (
-                <div className="w-8 h-8 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center shrink-0">
-                  <Bot className="w-4 h-4" />
-                </div>
-              )}
-
-              <div
-                className={`p-4 rounded-2xl max-w-xl text-xs leading-relaxed ${
-                  m.sender === 'user'
-                    ? 'bg-indigo-600 text-white rounded-br-none font-medium shadow-md shadow-indigo-500/20'
-                    : 'bg-slate-900/90 text-slate-200 border border-slate-800 rounded-bl-none whitespace-pre-wrap'
-                }`}
-              >
-                {m.text}
+      {/* Chat Messages */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 28px' }}>
+        <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {messages.map((msg, i) => (
+            <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flexDirection: msg.role === 'user' ? 'row-reverse' : 'row' }}>
+              {/* Avatar */}
+              <div style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: msg.role === 'ai' ? 'linear-gradient(135deg, #6366F1, #7C3AED)' : '#F1F5F9', border: msg.role === 'user' ? '1px solid #E2E8F0' : 'none' }}>
+                {msg.role === 'ai' ? <Sparkles size={14} color="white" /> : <User size={14} color="#64748B" />}
               </div>
-
-              {m.sender === 'user' && (
-                <div className="w-8 h-8 rounded-xl bg-slate-800 text-slate-300 border border-slate-700 flex items-center justify-center shrink-0">
-                  <User className="w-4 h-4" />
-                </div>
-              )}
+              {/* Bubble */}
+              <div style={{
+                maxWidth: '80%', padding: '12px 16px', borderRadius: msg.role === 'ai' ? '4px 14px 14px 14px' : '14px 4px 14px 14px',
+                background: msg.role === 'ai' ? '#FFFFFF' : '#6366F1',
+                border: msg.role === 'ai' ? '1px solid #E2E8F0' : 'none',
+                color: msg.role === 'ai' ? '#0F172A' : '#FFFFFF',
+                fontSize: 13.5, lineHeight: 1.6,
+                boxShadow: msg.role === 'ai' ? '0 1px 3px rgba(15,23,42,0.06)' : '0 2px 8px rgba(99,102,241,0.3)',
+              }}>
+                {msg.text.split('\n').map((line, j) => (
+                  <p key={j} style={{ margin: '2px 0' }}
+                    dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/•/g, '•') }} />
+                ))}
+              </div>
             </div>
           ))}
-
           {loading && (
-            <div className="flex items-center gap-3 text-xs text-indigo-400 font-medium animate-pulse">
-              <Sparkles className="w-4 h-4" /> Analyzing database risks and supply chain rules...
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #6366F1, #7C3AED)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Sparkles size={14} color="white" />
+              </div>
+              <div style={{ padding: '12px 16px', background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '4px 14px 14px 14px' }}>
+                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                  {[0,1,2].map((n) => <div key={n} style={{ width: 7, height: 7, borderRadius: '50%', background: '#6366F1', opacity: 0.6, animation: `pulse ${0.6 + n * 0.2}s infinite` }} />)}
+                </div>
+              </div>
             </div>
           )}
+          <div ref={bottomRef} />
         </div>
+      </div>
 
-        {/* Input Bar */}
-        <div className="mt-4 flex gap-3 shrink-0">
+      {/* Input */}
+      <div style={{ padding: '14px 28px', borderTop: '1px solid #E2E8F0', background: '#FFFFFF' }}>
+        <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', gap: 10 }}>
           <input
-            type="text"
-            placeholder="Ask about reorders, stockouts, safety stock, or lead times..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            className="flex-1 bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-500 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            value={input} onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); } }}
+            placeholder="Ask about inventory risks, reorders, forecasts..."
+            style={{ flex: 1, padding: '11px 16px', borderRadius: 12, border: '1px solid #E2E8F0', background: '#F8FAFC', fontSize: 13.5, color: '#0F172A', outline: 'none', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
           />
-          <button
-            onClick={() => handleSend()}
-            disabled={loading || !input.trim()}
-            className="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 flex items-center gap-2"
-          >
-            <Send className="w-4 h-4" />
-            Ask
+          <button onClick={() => send(input)} disabled={loading || !input.trim()}
+            style={{ width: 44, height: 44, borderRadius: 12, background: loading || !input.trim() ? '#E2E8F0' : '#6366F1', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: loading || !input.trim() ? 'not-allowed' : 'pointer', transition: 'background 0.15s', flexShrink: 0 }}>
+            <Send size={16} color={loading || !input.trim() ? '#94A3B8' : '#FFFFFF'} />
           </button>
         </div>
       </div>

@@ -1,19 +1,11 @@
-﻿from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse
+﻿from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Optional
 import os
 
 try:
     from backend.app.core.config import settings
-    from backend.app.models.schemas import (
-        ProductOut, DashboardSummary, SalesTrendItem, CategoryDemandItem, RiskItem, ForecastResponse
-    )
 except ImportError:
     from app.core.config import settings
-    from app.models.schemas import (
-        ProductOut, DashboardSummary, SalesTrendItem, CategoryDemandItem, RiskItem, ForecastResponse
-    )
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -44,14 +36,14 @@ MOCK_PRODUCTS = [
 ]
 
 MOCK_RISK_ITEMS = [
-    RiskItem(id=1, sku_id="SKU001", product_name="Wireless Mouse", category="Accessories", price=799.0, current_stock=43, avg_daily_demand=35.0, lead_time_days=7, lead_time_demand=245.0, safety_stock=28.0, reorder_point=273.0, recommended_quantity=320, recommended_purchase_cost=255680.0, risk_level="HIGH", days_to_stockout=1.2),
-    RiskItem(id=4, sku_id="SKU004", product_name="Noise Cancelling Headphones", category="Electronics", price=5999.0, current_stock=25, avg_daily_demand=12.0, lead_time_days=14, lead_time_demand=168.0, safety_stock=18.0, reorder_point=186.0, recommended_quantity=180, recommended_purchase_cost=1079820.0, risk_level="HIGH", days_to_stockout=2.1),
-    RiskItem(id=5, sku_id="SKU005", product_name="Ergonomic Office Chair", category="Home", price=8999.0, current_stock=14, avg_daily_demand=8.0, lead_time_days=12, lead_time_demand=96.0, safety_stock=12.0, reorder_point=108.0, recommended_quantity=110, recommended_purchase_cost=989890.0, risk_level="MEDIUM", days_to_stockout=1.8),
-    RiskItem(id=10, sku_id="SKU010", product_name="Smart Fitness Watch", category="Electronics", price=4299.0, current_stock=30, avg_daily_demand=18.0, lead_time_days=9, lead_time_demand=162.0, safety_stock=15.0, reorder_point=177.0, recommended_quantity=190, recommended_purchase_cost=816810.0, risk_level="MEDIUM", days_to_stockout=1.7),
-    RiskItem(id=2, sku_id="SKU002", product_name="Mechanical Keyboard", category="Electronics", price=3499.0, current_stock=180, avg_daily_demand=15.0, lead_time_days=10, lead_time_demand=150.0, safety_stock=20.0, reorder_point=170.0, recommended_quantity=0, recommended_purchase_cost=0.0, risk_level="LOW", days_to_stockout=12.0),
-    RiskItem(id=3, sku_id="SKU003", product_name="USB-C Hub", category="Accessories", price=1299.0, current_stock=95, avg_daily_demand=28.0, lead_time_days=5, lead_time_demand=140.0, safety_stock=22.0, reorder_point=162.0, recommended_quantity=0, recommended_purchase_cost=0.0, risk_level="LOW", days_to_stockout=3.4),
-    RiskItem(id=6, sku_id="SKU006", product_name="LED Desk Lamp", category="Home", price=1499.0, current_stock=210, avg_daily_demand=22.0, lead_time_days=7, lead_time_demand=154.0, safety_stock=18.0, reorder_point=172.0, recommended_quantity=0, recommended_purchase_cost=0.0, risk_level="OVERSTOCK", days_to_stockout=9.5),
-    RiskItem(id=7, sku_id="SKU007", product_name="Cotton Graphic T-Shirt", category="Apparel", price=499.0, current_stock=80, avg_daily_demand=45.0, lead_time_days=5, lead_time_demand=225.0, safety_stock=30.0, reorder_point=255.0, recommended_quantity=290, recommended_purchase_cost=144710.0, risk_level="HIGH", days_to_stockout=1.8),
+    {"id": 1, "sku_id": "SKU001", "product_name": "Wireless Mouse", "category": "Accessories", "price": 799.0, "current_stock": 43, "avg_daily_demand": 35.0, "lead_time_days": 7, "lead_time_demand": 245.0, "safety_stock": 28.0, "reorder_point": 273.0, "recommended_quantity": 320, "recommended_purchase_cost": 255680.0, "risk_level": "HIGH", "days_to_stockout": 1.2},
+    {"id": 4, "sku_id": "SKU004", "product_name": "Noise Cancelling Headphones", "category": "Electronics", "price": 5999.0, "current_stock": 25, "avg_daily_demand": 12.0, "lead_time_days": 14, "lead_time_demand": 168.0, "safety_stock": 18.0, "reorder_point": 186.0, "recommended_quantity": 180, "recommended_purchase_cost": 1079820.0, "risk_level": "HIGH", "days_to_stockout": 2.1},
+    {"id": 5, "sku_id": "SKU005", "product_name": "Ergonomic Office Chair", "category": "Home", "price": 8999.0, "current_stock": 14, "avg_daily_demand": 8.0, "lead_time_days": 12, "lead_time_demand": 96.0, "safety_stock": 12.0, "reorder_point": 108.0, "recommended_quantity": 110, "recommended_purchase_cost": 989890.0, "risk_level": "MEDIUM", "days_to_stockout": 1.8},
+    {"id": 10, "sku_id": "SKU010", "product_name": "Smart Fitness Watch", "category": "Electronics", "price": 4299.0, "current_stock": 30, "avg_daily_demand": 18.0, "lead_time_days": 9, "lead_time_demand": 162.0, "safety_stock": 15.0, "reorder_point": 177.0, "recommended_quantity": 190, "recommended_purchase_cost": 816810.0, "risk_level": "MEDIUM", "days_to_stockout": 1.7},
+    {"id": 2, "sku_id": "SKU002", "product_name": "Mechanical Keyboard", "category": "Electronics", "price": 3499.0, "current_stock": 180, "avg_daily_demand": 15.0, "lead_time_days": 10, "lead_time_demand": 150.0, "safety_stock": 20.0, "reorder_point": 170.0, "recommended_quantity": 0, "recommended_purchase_cost": 0.0, "risk_level": "LOW", "days_to_stockout": 12.0},
+    {"id": 3, "sku_id": "SKU003", "product_name": "USB-C Hub", "category": "Accessories", "price": 1299.0, "current_stock": 95, "avg_daily_demand": 28.0, "lead_time_days": 5, "lead_time_demand": 140.0, "safety_stock": 22.0, "reorder_point": 162.0, "recommended_quantity": 0, "recommended_purchase_cost": 0.0, "risk_level": "LOW", "days_to_stockout": 3.4},
+    {"id": 6, "sku_id": "SKU006", "product_name": "LED Desk Lamp", "category": "Home", "price": 1499.0, "current_stock": 210, "avg_daily_demand": 22.0, "lead_time_days": 7, "lead_time_demand": 154.0, "safety_stock": 18.0, "reorder_point": 172.0, "recommended_quantity": 0, "recommended_purchase_cost": 0.0, "risk_level": "OVERSTOCK", "days_to_stockout": 9.5},
+    {"id": 7, "sku_id": "SKU007", "product_name": "Cotton Graphic T-Shirt", "category": "Apparel", "price": 499.0, "current_stock": 80, "avg_daily_demand": 45.0, "lead_time_days": 5, "lead_time_demand": 225.0, "safety_stock": 30.0, "reorder_point": 255.0, "recommended_quantity": 290, "recommended_purchase_cost": 144710.0, "risk_level": "HIGH", "days_to_stockout": 1.8},
 ]
 
 
@@ -68,13 +60,13 @@ def health_check():
 
 
 # Products Endpoints
-@app.get("/products", response_model=List[ProductOut])
-@app.get("/api/products", response_model=List[ProductOut])
+@app.get("/products")
+@app.get("/api/products")
 def get_products():
     return MOCK_PRODUCTS
 
-@app.get("/products/{sku_id}", response_model=ProductOut)
-@app.get("/api/products/{sku_id}", response_model=ProductOut)
+@app.get("/products/{sku_id}")
+@app.get("/api/products/{sku_id}")
 def get_product(sku_id: str):
     found = next((m for m in MOCK_PRODUCTS if m["sku_id"] == sku_id), None)
     if not found:
@@ -83,20 +75,20 @@ def get_product(sku_id: str):
 
 
 # Dashboard Endpoints
-@app.get("/dashboard/summary", response_model=DashboardSummary)
-@app.get("/api/dashboard/summary", response_model=DashboardSummary)
+@app.get("/dashboard/summary")
+@app.get("/api/dashboard/summary")
 def get_dashboard_summary():
-    return DashboardSummary(
-        total_skus=10,
-        total_inventory=967,
-        total_sales_volume_30d=8420,
-        total_revenue_30d=1452900.0,
-        high_risk_skus_count=2,
-        medium_risk_skus_count=3,
-        low_risk_skus_count=4,
-        overstock_skus_count=1,
-        recommended_purchase_value=184500.0,
-    )
+    return {
+        "total_skus": 10,
+        "total_inventory": 967,
+        "total_sales_volume_30d": 8420,
+        "total_revenue_30d": 1452900.0,
+        "high_risk_skus_count": 2,
+        "medium_risk_skus_count": 3,
+        "low_risk_skus_count": 4,
+        "overstock_skus_count": 1,
+        "recommended_purchase_value": 184500.0,
+    }
 
 @app.get("/dashboard/charts/sales-trend")
 @app.get("/api/dashboard/charts/sales-trend")
@@ -123,15 +115,15 @@ def get_category_demand():
 
 
 # Inventory Endpoints
-@app.get("/inventory/risk-matrix", response_model=List[RiskItem])
-@app.get("/api/inventory/risk-matrix", response_model=List[RiskItem])
+@app.get("/inventory/risk-matrix")
+@app.get("/api/inventory/risk-matrix")
 def get_risk_matrix():
     return MOCK_RISK_ITEMS
 
-@app.get("/inventory/recommendations", response_model=List[RiskItem])
-@app.get("/api/inventory/recommendations", response_model=List[RiskItem])
+@app.get("/inventory/recommendations")
+@app.get("/api/inventory/recommendations")
 def get_recommendations():
-    return [item for item in MOCK_RISK_ITEMS if item.recommended_quantity > 0]
+    return [item for item in MOCK_RISK_ITEMS if item["recommended_quantity"] > 0]
 
 
 # Assistant Query Endpoint

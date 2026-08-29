@@ -1,14 +1,9 @@
-﻿from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+﻿from fastapi import APIRouter, HTTPException
 from typing import List
 
 try:
-    from backend.app.core.database import get_db
-    from backend.app.models.db_models import Product
     from backend.app.models.schemas import ProductOut
 except ImportError:
-    from app.core.database import get_db
-    from app.models.db_models import Product
     from app.models.schemas import ProductOut
 
 router = APIRouter(prefix="/products", tags=["Products"])
@@ -28,25 +23,12 @@ MOCK_PRODUCTS = [
 
 
 @router.get("", response_model=List[ProductOut])
-def get_all_products(db: Session = Depends(get_db)):
-    try:
-        prods = db.query(Product).order_by(Product.sku_id).all()
-        if prods and len(prods) > 0:
-            return prods
-    except Exception as e:
-        print(f"Products DB fallback triggered: {e}")
+def get_all_products():
     return MOCK_PRODUCTS
 
 
 @router.get("/{sku_id}", response_model=ProductOut)
-def get_product_by_sku(sku_id: str, db: Session = Depends(get_db)):
-    try:
-        product = db.query(Product).filter(Product.sku_id == sku_id).first()
-        if product:
-            return product
-    except Exception:
-        pass
-
+def get_product_by_sku(sku_id: str):
     found = next((m for m in MOCK_PRODUCTS if m["sku_id"] == sku_id), None)
     if not found:
         raise HTTPException(status_code=404, detail=f"Product '{sku_id}' not found.")

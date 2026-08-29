@@ -1,7 +1,13 @@
-from sqlalchemy import create_engine
+﻿from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from backend.app.core.config import settings
+import os
+
+# Support both local (backend.app.core.config) and Vercel (app.core.config) import paths
+try:
+    from backend.app.core.config import settings
+except ImportError:
+    from app.core.config import settings
 
 db_url = settings.DATABASE_URL
 # Fix legacy 'postgres://' schema to 'postgresql://' for SQLAlchemy 2.0 compatibility
@@ -12,17 +18,15 @@ if db_url.startswith("postgres://"):
 if db_url.startswith("sqlite"):
     engine_kwargs = {"connect_args": {"check_same_thread": False}}
 else:
-    # PostgreSQL (Supabase / Cloud) connection pooling
     engine_kwargs = {
         "pool_pre_ping": True,
         "pool_recycle": 300,
-        "pool_size": 10,
-        "max_overflow": 20
+        "pool_size": 5,
+        "max_overflow": 10,
     }
 
 engine = create_engine(db_url, **engine_kwargs)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 Base = declarative_base()
 
 def get_db():

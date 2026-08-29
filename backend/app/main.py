@@ -1,70 +1,94 @@
-from fastapi import FastAPI
+﻿from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.app.core.config import settings
-from backend.app.core.database import engine, Base, SessionLocal
-from backend.app.api import upload, products, dashboard, forecast, inventory, ai_assistant
-from backend.data.generator import generate_sample_data
-from backend.app.services.data_processor import DataProcessor
-
 import pandas as pd
 import os
 
-# Create Database tables
+# Dual-import: local dev uses backend.app.* prefix; Vercel uses app.* directly
+try:
+    from backend.app.core.config import settings
+    from backend.app.core.database import engine, Base, SessionLocal
+    from backend.app.api import upload, products, dashboard, forecast, inventory, ai_assistant
+    from backend.data.generator import generate_sample_data
+    from backend.app.services.data_processor import DataProcessor
+except ImportError:
+    from app.core.config import settings
+    from app.core.database import engine, Base, SessionLocal
+    from app.api import upload, products, dashboard, forecast, inventory, ai_assistant
+    try:
+        # data generator is optional on Vercel (read-only filesystem)
+        from data.generator import generate_sample_data
+    except ImportError:
+        generate_sample_data = None
+    from app.services.data_processor import DataProcessor
+
+# Create database tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    description="AI-Powered Demand & Inventory Intelligence Platform REST API"
+    description="AI-Powered Demand & Inventory Intelligence Platform REST API",
 )
 
-# Enable CORS for Next.js Frontend
+# CORS — allow all origins (Vercel frontend + localhost)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "https://*.vercel.app",
-        "*",
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,   # must be False when allow_origins=["*"]
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Register API Routers
-app.include_router(upload.router, prefix=settings.API_V1_STR)
-app.include_router(products.router, prefix=settings.API_V1_STR)
-app.include_router(dashboard.router, prefix=settings.API_V1_STR)
-app.include_router(forecast.router, prefix=settings.API_V1_STR)
-app.include_router(inventory.router, prefix=settings.API_V1_STR)
+app.include_router(upload.router,       prefix=settings.API_V1_STR)
+app.include_router(products.router,     prefix=settings.API_V1_STR)
+app.include_router(dashboard.router,    prefix=settings.API_V1_STR)
+app.include_router(forecast.router,     prefix=settings.API_V1_STR)
+app.include_router(inventory.router,    prefix=settings.API_V1_STR)
 app.include_router(ai_assistant.router, prefix=settings.API_V1_STR)
+
 
 @app.on_event("startup")
 def startup_event():
-    # Auto-seed database if empty
+    """Auto-seed database if empty (skipped silently on Vercel read-only FS)."""
     db = SessionLocal()
     try:
-        from backend.app.models.db_models import Product
+        try:
+            from backend.app.models.db_models import Product
+        except ImportError:
+            from app.models.db_models import Product
+
         if db.query(Product).count() == 0:
-            print("Database is empty. Initializing sample retail dataset...")
-            filepath = "backend/data/sample_retail_sales.csv"
-            if not os.path.exists(filepath):
+            print("Database empty – attempting auto-seed...")
+            # Try multiple candidate paths for the CSV
+            candidates = [
+                "backend/data/sample_retail_sales.csv",
+                "data/sample_retail_sales.csv",
+                os.path.join(os.path.dirname(__file__), "..", "data", "sample_retail_sales.csv"),
+            ]
+            filepath = next((p for p in candidates if os.path.exists(p)), None)
+
+            if filepath is None and generate_sample_data is not None:
+                filepath = candidates[0]
+                os.makedirs(os.path.dirname(filepath), exist_ok=True)
                 generate_sample_data(filepath)
-            df = pd.read_csv(filepath)
-            DataProcessor.ingest_dataframe(df, db)
-            print("Sample dataset successfully loaded into database!")
+
+            if filepath and os.path.exists(filepath):
+                df = pd.read_csv(filepath)
+                DataProcessor.ingest_dataframe(df, db)
+                print("Sample dataset loaded successfully.")
+            else:
+                print("No CSV found and generator unavailable – skipping auto-seed.")
     except Exception as e:
-        print(f"Startup data auto-seed note: {e}")
+        print(f"Startup auto-seed note: {e}")
     finally:
         db.close()
 
+
 @app.get("/")
 def root():
-    return {
-        "status": "online",
-        "project": settings.PROJECT_NAME,
-        "docs": "/docs"
-    }
+    return {"status": "online", "project": settings.PROJECT_NAME, "docs": "/docs"}
+
 
 @app.get("/api/health")
 def health_check():

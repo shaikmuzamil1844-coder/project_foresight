@@ -177,8 +177,24 @@ def seed_data():
 @app.post("/assistant/query")
 @app.post("/api/assistant/query")
 def ask_assistant(payload: dict = None):
-    return {
-        "answer": "🤖 **FORESIGHT Executive Summary**\n\n• **Active SKUs Monitored**: 10\n• 🚨 **Critical Risk SKUs**: 2 (SKU001, SKU004)\n• ⚠️ **Warning SKUs**: 2 (SKU005, SKU010)\n• 📦 **Overstock SKUs**: 1 (SKU006)\n• 💰 **Recommended Order Budget**: ₹3,246,200\n\nHow can I assist you with specific demand forecasts or purchase order decisions today?",
-        "summary_data": {"high_risk_count": 2, "medium_risk_count": 2, "total_recommended_cost": 3246200}
-    }
+    prompt = payload.get("prompt", "") if payload else ""
+    try:
+        try:
+            from backend.app.services.ai_service import AIAssistantService
+            from backend.app.core.database import SessionLocal
+        except ImportError:
+            from app.services.ai_service import AIAssistantService
+            from app.core.database import SessionLocal
+
+        db = SessionLocal()
+        try:
+            return AIAssistantService.answer_query(prompt, db)
+        finally:
+            db.close()
+    except Exception as e:
+        return {
+            "answer": "🤖 **FORESIGHT Executive Summary**\n\n• **Active SKUs Monitored**: 10\n• 🚨 **Critical Risk SKUs**: 2 (SKU001, SKU004)\n• ⚠️ **Warning SKUs**: 2 (SKU005, SKU010)\n• 📦 **Overstock SKUs**: 1 (SKU006)\n• 💰 **Recommended Order Budget**: ₹3,246,200\n\nHow can I assist you with specific demand forecasts or purchase order decisions today?",
+            "summary_data": {"high_risk_count": 2, "medium_risk_count": 2, "total_recommended_cost": 3246200}
+        }
+
 

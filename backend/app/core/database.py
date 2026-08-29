@@ -1,31 +1,40 @@
 ﻿from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import NullPool
 import os
 
-# Support both local (backend.app.core.config) and Vercel (app.core.config) import paths
 try:
     from backend.app.core.config import settings
 except ImportError:
     from app.core.config import settings
 
-db_url = settings.DATABASE_URL
-# Fix legacy 'postgres://' schema to 'postgresql://' for SQLAlchemy 2.0 compatibility
+db_url = os.getenv("DATABASE_URL", settings.DATABASE_URL)
+
+# Normalize postgres:// to postgresql://
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
-# Configure connection args based on database engine
+# If running on Vercel without a remote DB, use in-memory SQLite (read-only FS fallback)
+if db_url.startswith("sqlite") and "foresight.db" in db_url and os.getenv("VERCEL"):
+    db_url = "sqlite:///:memory:"
+
 if db_url.startswith("sqlite"):
     engine_kwargs = {"connect_args": {"check_same_thread": False}}
 else:
+    # PostgreSQL for serverless – use NullPool and SSL
     engine_kwargs = {
+        "poolclass": NullPool,
         "pool_pre_ping": True,
-        "pool_recycle": 300,
-        "pool_size": 5,
-        "max_overflow": 10,
     }
 
-engine = create_engine(db_url, **engine_kwargs)
+try:
+    engine = create_engine(db_url, **engine_kwargs)
+except Exception as e:
+    print(f"Failed to create engine for {db_url}: {e}, falling back to in-memory SQLite")
+    db_url = "sqlite:///:memory:"
+    engine = create_engine(db_url, connect_args={"check_same_thread": False})
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

@@ -4,22 +4,40 @@ from sqlalchemy import func
 from datetime import datetime, timedelta
 
 try:
-    from backend.app.core.database import get_db
+    from backend.app.core.database import get_db, Base, engine
     from backend.app.models.db_models import Product, SalesRecord, InventoryRecord, RecommendationRecord
     from backend.app.models.schemas import DashboardSummary
+    from backend.app.services.data_processor import DataProcessor
+    from backend.data.generator import generate_sample_data
 except ImportError:
-    from app.core.database import get_db
+    from app.core.database import get_db, Base, engine
     from app.models.db_models import Product, SalesRecord, InventoryRecord, RecommendationRecord
     from app.models.schemas import DashboardSummary
+    try:
+        from app.services.data_processor import DataProcessor
+        from data.generator import generate_sample_data
+    except ImportError:
+        DataProcessor = None
+        generate_sample_data = None
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 
+def _ensure_data(db: Session):
+    try:
+        Base.metadata.create_all(bind=engine)
+        if db.query(Product).count() == 0 and DataProcessor and generate_sample_data:
+            df = generate_sample_data()
+            DataProcessor.ingest_dataframe(df, db)
+    except Exception as e:
+        print(f"Ensure data note: {e}")
+
+
 @router.get("/summary", response_model=DashboardSummary)
 def get_dashboard_summary(db: Session = Depends(get_db)):
+    _ensure_data(db)
     total_skus = db.query(Product).count()
 
-    # Latest inventory per product
     latest_inv_sub = db.query(
         InventoryRecord.product_id,
         func.max(InventoryRecord.date).label("max_date"),
@@ -33,7 +51,6 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
 
     total_inventory = sum(inv.stock_quantity for inv in latest_invs)
 
-    # 30-day sales
     max_sales_date = db.query(func.max(SalesRecord.date)).scalar()
     if max_sales_date:
         start_30d = max_sales_date - timedelta(days=30)
@@ -44,7 +61,6 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
         total_sales_volume_30d = 0
         total_revenue_30d      = 0.0
 
-    # Risk counts
     recs          = db.query(RecommendationRecord).all()
     high_count    = sum(1 for r in recs if r.risk_level == "HIGH")
     medium_count  = sum(1 for r in recs if r.risk_level == "MEDIUM")
@@ -71,6 +87,7 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
 
 @router.get("/charts/sales-trend")
 def get_sales_trend(db: Session = Depends(get_db)):
+    _ensure_data(db)
     rows = (
         db.query(
             SalesRecord.date,
@@ -93,6 +110,7 @@ def get_sales_trend(db: Session = Depends(get_db)):
 
 @router.get("/charts/category-demand")
 def get_category_demand(db: Session = Depends(get_db)):
+    _ensure_data(db)
     rows = (
         db.query(
             Product.category,

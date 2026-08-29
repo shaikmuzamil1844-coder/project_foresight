@@ -1,42 +1,53 @@
-# Project FORESIGHT - Demo Video Script (3-5 Minutes)
+# Project FORESIGHT - Demo Video Script
 
----
+## Recording setup
 
-## 🎬 Video Overview & Outline
+- Target duration: 3-4 minutes
+- Open the deployed app and use the sample-data seed action before recording.
+- Record at 1080p. Keep browser zoom at 100%.
 
-- **Target Duration**: 3 to 4 Minutes
-- **Structure**:
-  1. **0:00 - 0:30**: Introduction & Business Problem (Stockouts vs Overstock)
-  2. **0:30 - 1:15**: Executive Dashboard Overview (KPIs, Sales Trend, Risk Breakdown)
-  3. **1:15 - 2:00**: Interactive Dataset Ingestion & Validation
-  4. **2:00 - 2:45**: SKU Demand Forecasting Engine (7/14/30 Days, Confidence Bounds, MAE/RMSE/MAPE)
-  5. **2:45 - 3:30**: Inventory Intelligence & Purchase Order Recommendations
-  6. **3:30 - 4:00**: "Ask Foresight" AI Assistant & Conclusion
+## 0:00-0:25 - Introduction
 
----
+> Hello everyone. This is Project FORESIGHT, a demand forecasting and inventory intelligence platform for retail operations. It helps supply-chain teams turn historical sales data into practical stock-risk and replenishment decisions.
 
-## 🎙️ Script Transcript
+Show the dashboard landing page.
 
-### 1. Introduction (0:00 - 0:30)
-> *"Hello everyone! Welcome to Project FORESIGHT – an AI-Powered Demand Forecasting & Inventory Intelligence Platform designed to eliminate retail stockouts and prevent overstock capital waste."*
-> *"Traditional retailers lose billions every year because reordering relies on static gut feeling. Foresight solves this by turning raw sales history into real-time, predictive supply chain decisions."*
+## 0:25-0:55 - Dashboard
 
-### 2. Dashboard Overview (0:30 - 1:15)
-> *"Here on our main dashboard, supply chain managers get an immediate executive snapshot of total SKUs, active inventory counts, 30-day sales volume, and our real-time Stockout Risk breakdown."*
-> *"Notice our risk indicators: we currently have critical SKUs flagged in Red (High Risk), Yellow (Medium Warning), Green (Healthy), and Blue (Overstock)."*
+> The dashboard provides the executive view: active SKUs, current inventory, recent sales, stockout risk, and a purchase-value estimate. These values are calculated from the data stored in the platform, not fixed display values.
 
-### 3. Data Upload & Ingestion (1:15 - 2:00)
-> *"Foresight makes data ingestion seamless. You can upload any CSV or Excel transaction file containing SKU IDs, dates, units sold, prices, and lead times. Watch as our automated data processor cleans the schema and instantly updates our database models."*
+Point to the KPI cards, sales chart, and risk breakdown.
 
-### 4. Demand Forecasting Engine (2:00 - 2:45)
-> *"Let's dive into SKU-level forecasting. I'll select Wireless Mouse (SKU001) and choose a 30-day forecast horizon."*
-> *"Foresight trains an XGBoost time-series regression model on lag features and rolling window statistics. On the chart, you can see historical demand alongside our 30-day predicted trajectory complete with 95% confidence lower and upper uncertainty bounds."*
-> *"We also display empirical evaluation metrics: an MAE of 2.45 units and a MAPE under 9%, giving supply chain planners true confidence."*
+## 0:55-1:35 - Data ingestion
 
-### 5. Inventory Intelligence & Reorder Recommendations (2:45 - 3:30)
-> *"This is where Foresight transforms AI into real business value. In our Reorder Engine, we calculate Lead Time Demand, Safety Stock using a 95% service level factor, and exact Reorder Points."*
-> *"For Wireless Mouse, with current stock at 43 units and lead time of 7 days, Foresight flags a Critical Stockout Risk in 4.8 days and recommends an exact purchase order of 35 units, estimating the purchase budget."*
+Navigate to **Data Management**.
 
-### 6. AI Executive Assistant & Wrap-Up (3:30 - 4:00)
-> *"Finally, planners can talk directly with 'Ask Foresight'—our embedded AI assistant that synthesizes database risk records into clear, actionable natural language summaries."*
-> *"Thank you for watching! Foresight is fully deployed and ready to empower modern retail operations."*
+> Users can import a CSV or Excel sales-history file, or load the included sample dataset. During ingestion, FORESIGHT validates the schema, stores products and transaction records, refreshes inventory snapshots, and recalculates recommendations.
+
+Click **Load Sample Dataset** or demonstrate a CSV import. Wait for the success message.
+
+## 1:35-2:10 - Inventory risk and recommendations
+
+Navigate to **Inventory** and then **Recommendations**.
+
+> The inventory engine calculates lead-time demand, safety stock, reorder point, projected days to stockout, and a recommended order quantity for each SKU. This gives planners a ranked list of items that need attention first.
+
+Highlight one high-risk SKU and explain the risk badge and order quantity.
+
+## 2:10-2:50 - Forecasting
+
+Navigate to **Forecast** and select a seeded SKU, such as SKU001.
+
+> FORESIGHT uses a Gradient Boosting demand model with calendar features, demand lags, and rolling demand statistics. The forecast is bounded from 7 to 90 days and includes MAE, RMSE, MAPE, and 95 percent confidence bounds.
+
+Switch the horizon and point to the historical versus predicted series.
+
+## 2:50-3:20 - AI assistant and conclusion
+
+Navigate to **Ask FORESIGHT**.
+
+> The assistant summarizes the stored inventory context into direct operational guidance. With Gemini configured it can produce natural-language answers; otherwise it still returns deterministic, data-grounded inventory summaries.
+
+Ask: “What should I reorder?” Then close:
+
+> Project FORESIGHT brings data ingestion, forecasting, inventory optimization, and decision support into one retail workflow. Thank you.

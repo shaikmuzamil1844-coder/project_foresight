@@ -243,3 +243,11 @@ Project FORESIGHT/
 
 Built for enterprise retail demand intelligence and supply chain optimization.  
 Developed by **Shaik Muzamil** & the **Project FORESIGHT Team**.
+
+---
+
+## 📦 Submission Assets
+
+- [Technical project report (DOCX)](docs/Project_FORESIGHT_Report.docx)
+- [Demo video recording script](docs/demo_video_script.md)
+- [Feedback video recording script](docs/feedback_video_script.md)

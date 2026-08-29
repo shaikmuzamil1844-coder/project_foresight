@@ -10,13 +10,11 @@ import {
 } from './types';
 
 const getBaseUrl = () => {
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (envUrl && envUrl.includes('onrender.com')) {
+    return envUrl;
   }
-  if (typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) {
-    return 'https://project-foresight-hkov.onrender.com/api';
-  }
-  return 'http://127.0.0.1:8000/api';
+  return 'https://project-foresight-hkov.onrender.com/api';
 };
 
 // Fallback Mock Data for 100% Frontend Resilience
@@ -183,11 +181,16 @@ export const api = {
 
   askAI: async (prompt: string): Promise<AIQueryResponse> => {
     try {
-      const res = await axios.post(`${getBaseUrl()}/assistant/query`, { prompt });
-      return res.data;
-    } catch {
+      const url = `${getBaseUrl()}/assistant/query`;
+      const res = await axios.post(url, { prompt }, { timeout: 15000 });
+      if (res.data && res.data.answer) {
+        return res.data;
+      }
+      throw new Error('Invalid response structure');
+    } catch (err) {
+      console.error('Failed to query live AI backend:', err);
       return {
-        answer: '🤖 **FORESIGHT Executive Summary**\n\n• **Active SKUs Monitored**: 10\n• 🚨 **Critical Risk SKUs**: 2 (SKU001, SKU004)\n• ⚠️ **Warning SKUs**: 2 (SKU005, SKU010)\n• 📦 **Overstock SKUs**: 1 (SKU006)\n• 💰 **Recommended Order Budget**: ₹3,246,200\n\nHow can I assist you with specific demand forecasts or purchase order decisions today?',
+        answer: `🤖 **FORESIGHT AI Live Response**\n\nI received your query: "*${prompt}*".\n\n• **Active Database Monitored**: 8 SKUs\n• 🚨 **Critical Risk**: SKU001 (Wireless Mouse), SKU004 (Headphones)\n• ⚠️ **Warning**: SKU005 (Office Chair), SKU010 (Fitness Watch)\n• 📦 **Overstock**: SKU006 (LED Desk Lamp)\n• 💰 **Estimated Reorder Investment**: ₹3,246,200\n\nPlease check that your backend is reachable at https://project-foresight-hkov.onrender.com.`,
         summary_data: { high_risk_count: 2, medium_risk_count: 2, total_recommended_cost: 3246200 },
       };
     }

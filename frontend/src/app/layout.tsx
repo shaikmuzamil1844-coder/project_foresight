@@ -1,5 +1,6 @@
-import './globals.css';
+﻿import './globals.css';
 import { Sidebar } from '@/components/layout/sidebar';
+import { FloatingAssistant } from '@/components/layout/floating-assistant';
 
 export const metadata = {
   title: 'Project FORESIGHT – AI-Powered Demand & Inventory Intelligence Platform',
@@ -18,8 +19,8 @@ export default function RootLayout({
         <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
           {children}
         </main>
+        <FloatingAssistant />
       </body>
     </html>
   );
 }
-

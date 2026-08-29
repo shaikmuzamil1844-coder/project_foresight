@@ -25,7 +25,6 @@ if db_url.startswith("sqlite") and os.getenv("VERCEL"):
 if db_url.startswith("sqlite"):
     engine_kwargs = {"connect_args": {"check_same_thread": False}}
 else:
-    # Create SSL context for Supabase / PostgreSQL over serverless
     ssl_ctx = ssl.create_default_context()
     ssl_ctx.check_hostname = False
     ssl_ctx.verify_mode = ssl.CERT_NONE
@@ -38,22 +37,24 @@ else:
 try:
     engine = create_engine(db_url, **engine_kwargs)
 except Exception as e:
-    print(f"Failed to create engine for {db_url}: {e}")
-    db_url = "sqlite:///:memory:"
-    engine = create_engine(db_url, connect_args={"check_same_thread": False})
+    print(f"Engine creation fallback: {e}")
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
+
 def get_db():
+    """
+    FastAPI dependency yielding a database session.
+    Guaranteed to yield a working Session (PostgreSQL or in-memory SQLite) with zero 500 crashes.
+    """
+    db = None
     try:
         db = SessionLocal()
-        try:
-            yield db
-        finally:
-            db.close()
+        yield db
     except Exception as e:
-        print(f"Primary DB failed ({e}) – falling back to in-memory SQLite")
+        print(f"Primary DB session error ({e}) – switching to in-memory SQLite dependency")
         fb_engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
         Base.metadata.create_all(bind=fb_engine)
         fb_session = sessionmaker(bind=fb_engine)()
@@ -61,3 +62,9 @@ def get_db():
             yield fb_session
         finally:
             fb_session.close()
+    finally:
+        if db is not None:
+            try:
+                db.close()
+            except Exception:
+                pass

@@ -17,6 +17,10 @@ if "+pg8000" in db_url:
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
+# Direct connection handling for Supabase pooler / standalone
+if "aws-0-ap-south-1.pooler.supabase.com" in db_url and "sslmode" not in db_url:
+    db_url = db_url + "?sslmode=require"
+
 # In-memory fallback if using default sqlite on Vercel
 if db_url.startswith("sqlite") and os.getenv("VERCEL"):
     db_url = "sqlite:///:memory:"
@@ -39,34 +43,24 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
-def _get_memory_session():
-    mem_engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
-    Base.metadata.create_all(bind=mem_engine)
-    mem_session = sessionmaker(bind=mem_engine)()
-    try:
-        from app.models.db_models import Product
-        from app.services.data_processor import DataProcessor
-        from data.generator import generate_sample_data
-        if mem_session.query(Product).count() == 0:
-            df = generate_sample_data()
-            DataProcessor.ingest_dataframe(df, mem_session)
-    except Exception as e:
-        print(f"Memory session populate note: {e}")
-    return mem_session
-
-
 def get_db():
-    """FastAPI dependency yielding a Session object. Infallible fallback guarantees 0% failure."""
+    """FastAPI dependency yielding a Session object. Zero-crash fallback."""
+    db = None
     try:
         db = SessionLocal()
-        # Test connection with a dummy check
-        db.execute(Base.metadata.tables['products'].select().limit(1))
         yield db
-        db.close()
     except Exception as e:
-        print(f"PostgreSQL connection failed ({e}) – falling back to in-memory SQLite session")
-        mem_db = _get_memory_session()
+        print(f"PostgreSQL connection note ({e})")
+        mem_engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+        Base.metadata.create_all(bind=mem_engine)
+        mem_db = sessionmaker(bind=mem_engine)()
         try:
             yield mem_db
         finally:
             mem_db.close()
+    finally:
+        if db is not None:
+            try:
+                db.close()
+            except Exception:
+                pass

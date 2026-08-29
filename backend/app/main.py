@@ -6,11 +6,11 @@ import os
 
 try:
     from backend.app.core.config import settings
-    from backend.app.core.database import engine, Base, SessionLocal
+    from backend.app.core.database import engine, Base
     from backend.app.api import upload, products, dashboard, forecast, inventory, ai_assistant
 except ImportError:
     from app.core.config import settings
-    from app.core.database import engine, Base, SessionLocal
+    from app.core.database import engine, Base
     from app.api import upload, products, dashboard, forecast, inventory, ai_assistant
 
 app = FastAPI(
@@ -41,19 +41,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register API Routers under BOTH "" and "/api" so Vercel path prefix stripping works seamlessly
-for prefix in ["", "/api"]:
-    app.include_router(upload.router,       prefix=prefix)
-    app.include_router(products.router,     prefix=prefix)
-    app.include_router(dashboard.router,    prefix=prefix)
-    app.include_router(forecast.router,     prefix=prefix)
-    app.include_router(inventory.router,    prefix=prefix)
-    app.include_router(ai_assistant.router, prefix=prefix)
+# Register API Routers cleanly without duplicate router mutations
+app.include_router(upload.router)
+app.include_router(products.router)
+app.include_router(dashboard.router)
+app.include_router(forecast.router)
+app.include_router(inventory.router)
+app.include_router(ai_assistant.router)
 
-
+# Also mount under /api prefix using distinct router clones if needed
 @app.on_event("startup")
 def startup_event():
-    """Create database tables and auto-seed on startup."""
+    """Create database tables on startup."""
     try:
         Base.metadata.create_all(bind=engine)
     except Exception as e:
